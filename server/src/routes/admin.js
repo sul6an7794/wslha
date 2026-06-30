@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
 const db = require('../db');
 const { authMiddleware, adminMiddleware } = require('../auth');
 const { getActiveRoomsStats } = require('../rooms');
@@ -48,28 +47,16 @@ router.delete('/rounds/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-const uploadRoot = path.join(__dirname, '..', '..', 'uploads', 'rounds');
-fs.mkdirSync(uploadRoot, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = path.join(uploadRoot, String(req.params.id));
-    fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname) || '.jpg';
-    cb(null, Date.now() + '-' + Math.random().toString(36).slice(2, 8) + ext);
-  },
-});
-const upload = multer({ storage, limits: { fileSize: 20 * 1024 * 1024 } });
+// نخزّن الصورة في الذاكرة ثم نكتبها عبر طبقة التخزين (MongoDB أو ملف محلي).
+// الحد 12MB لكل صورة حتى تبقى ضمن حد مستند MongoDB (16MB).
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 12 * 1024 * 1024 } });
 
 router.post('/rounds/:id/images', (req, res) => {
-  upload.array('images', 12)(req, res, (err) => {
+  upload.array('images', 12)(req, res, async (err) => {
     if (err) {
       const msg =
         err.code === 'LIMIT_FILE_SIZE'
-          ? 'حجم الصورة كبير جدًا (الحد الأقصى 20MB لكل صورة)'
+          ? 'حجم الصورة كبير جدًا (الحد الأقصى 12MB لكل صورة)'
           : 'فشل رفع الصور: ' + (err.message || 'خطأ غير معروف');
       return res.status(400).json({ error: msg });
     }
@@ -77,15 +64,19 @@ router.post('/rounds/:id/images', (req, res) => {
       const roundId = req.params.id;
       const round = db.getRound(roundId);
       if (!round) return res.status(404).json({ error: 'الجولة غير موجودة' });
-      // رابط كامل (مع عنوان السيرفر) لأن واجهة المستخدم تُفتح من ملف محلي (file://)،
-      // ورابط نسبي مثل "/uploads/..." ينكسر هناك لأنه يُفسَّر كمسار على القرص.
+      // رابط كامل (مع عنوان السيرفر) ليعمل حتى لو فُتحت الواجهة المستقلة من ملف محلي.
       const origin = req.protocol + '://' + req.get('host');
       for (const f of req.files || []) {
-        const url = origin + '/uploads/rounds/' + roundId + '/' + f.filename;
-        db.insertRoundImage(roundId, { filename: f.filename, url });
+        const ext = path.extname(f.originalname) || '.jpg';
+        const filename = Date.now() + '-' + Math.random().toString(36).slice(2, 8) + ext;
+        const key = 'rounds/' + roundId + '/' + filename;
+        await db.saveImage(key, f.buffer, f.mimetype || 'image/jpeg');
+        const url = origin + '/img/' + key;
+        db.insertRoundImage(roundId, { filename, url });
       }
       res.json(toApiRound(db.getRound(roundId)));
     } catch (e) {
+      console.error(e);
       res.status(500).json({ error: 'خطأ غير متوقع أثناء حفظ الصور' });
     }
   });
