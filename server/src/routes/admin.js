@@ -5,6 +5,7 @@ const path = require('path');
 const db = require('../db');
 const { authMiddleware, adminMiddleware } = require('../auth');
 const { getActiveRoomsStats } = require('../rooms');
+const { compressImage } = require('../images');
 
 router.use(authMiddleware, adminMiddleware);
 
@@ -67,10 +68,19 @@ router.post('/rounds/:id/images', (req, res) => {
       // رابط كامل (مع عنوان السيرفر) ليعمل حتى لو فُتحت الواجهة المستقلة من ملف محلي.
       const origin = req.protocol + '://' + req.get('host');
       for (const f of req.files || []) {
-        const ext = path.extname(f.originalname) || '.jpg';
+        // نضغط الصورة (تصغير + JPEG)؛ لو تعذّر نخزّن الأصل كما هو.
+        let buf = f.buffer;
+        let contentType = f.mimetype || 'image/jpeg';
+        let ext = path.extname(f.originalname) || '.jpg';
+        const compressed = await compressImage(f.buffer);
+        if (compressed) {
+          buf = compressed.buffer;
+          contentType = compressed.contentType;
+          ext = compressed.ext;
+        }
         const filename = Date.now() + '-' + Math.random().toString(36).slice(2, 8) + ext;
         const key = 'rounds/' + roundId + '/' + filename;
-        await db.saveImage(key, f.buffer, f.mimetype || 'image/jpeg');
+        await db.saveImage(key, buf, contentType);
         const url = origin + '/img/' + key;
         db.insertRoundImage(roundId, { filename, url });
       }
