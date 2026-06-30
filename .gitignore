@@ -1,0 +1,9 @@
+node_modules/
+.env
+# بيانات وقت التشغيل (تُنشأ تلقائيًا على السيرفر)
+server/data.json
+server/uploads/
+# لا داعي لرفع نسخ HTML الأصلية — الواجهة المنشورة هي server/public/index.html
+Team Quest*.html
+وصّلها*.html
+*.dc.html
