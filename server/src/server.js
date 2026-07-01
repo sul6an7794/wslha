@@ -17,10 +17,24 @@ app.set('trust proxy', true);
 app.disable('x-powered-by');
 
 // ترويسات أمان أساسية
+const CSP = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://cdn.socket.io https://cdnjs.cloudflare.com",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com data:",
+  "img-src 'self' data: blob: https:",
+  "connect-src 'self' https: wss: ws:",
+  "worker-src 'self' blob:",
+  "frame-ancestors 'self'",
+].join('; ');
 app.use((req, res, next) => {
   res.set('X-Content-Type-Options', 'nosniff');
   res.set('X-Frame-Options', 'SAMEORIGIN');
   res.set('Referrer-Policy', 'no-referrer');
+  res.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  res.set('Content-Security-Policy', CSP);
   next();
 });
 

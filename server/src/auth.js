@@ -41,7 +41,12 @@ function authMiddleware(req, res, next) {
   const token = h.startsWith('Bearer ') ? h.slice(7) : null;
   const payload = token ? verifyToken(token) : null;
   if (!payload) return res.status(401).json({ error: 'يجب تسجيل الدخول' });
-  req.user = payload;
+  // أمان: نتحقق من المستخدم من القاعدة (مو من التوكن) — فالحساب المحذوف أو المُنزَّل
+  // من الإشراف يُرفض فورًا بدل أن يبقى صالحًا حتى انتهاء التوكن.
+  const db = require('./db');
+  const user = db.getUserById(payload.id);
+  if (!user) return res.status(401).json({ error: 'الحساب غير موجود' });
+  req.user = { id: user.id, username: user.username, isAdmin: !!user.is_admin };
   next();
 }
 

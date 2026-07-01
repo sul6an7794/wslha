@@ -10,9 +10,12 @@ function publicUser(u) {
 
 // تحديد معدّل بسيط في الذاكرة ضد التخمين (brute-force) على الدخول/التسجيل.
 const hits = new Map(); // ip -> { count, resetAt }
+// اسم المستخدم: حروف/أرقام/مسافة/_ . - فقط (يمنع رموز XSS مثل < > " ').
+const NAME_RE = /^[\p{L}\p{N} _.-]{2,40}$/u;
 function rateLimit(max, windowMs) {
   return (req, res, next) => {
-    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    // نعتمد عنوان Cloudflare الحقيقي (لا يُزوَّر) بدل X-Forwarded-For القابل للتزوير.
+    const ip = req.headers['cf-connecting-ip'] || req.ip || req.socket.remoteAddress || 'unknown';
     const now = Date.now();
     let rec = hits.get(ip);
     if (!rec || now > rec.resetAt) {
@@ -41,11 +44,11 @@ router.post('/register', authLimit, (req, res) => {
   if (!name || !password) {
     return res.status(400).json({ error: 'الاسم وكلمة المرور مطلوبة' });
   }
-  if (name.length > 40) {
-    return res.status(400).json({ error: 'الاسم طويل جدًا' });
+  if (!NAME_RE.test(name)) {
+    return res.status(400).json({ error: 'الاسم يحتوي رموزًا غير مسموحة (استخدم حروفًا وأرقامًا فقط، 2-40 خانة)' });
   }
-  if (String(password).length < 4) {
-    return res.status(400).json({ error: 'كلمة المرور قصيرة جدًا (4 أحرف على الأقل)' });
+  if (String(password).length < 6) {
+    return res.status(400).json({ error: 'كلمة المرور قصيرة جدًا (6 أحرف على الأقل)' });
   }
   if (db.getUserByUsername(name)) {
     return res.status(409).json({ error: 'الاسم مستخدم من قبل' });
@@ -85,6 +88,9 @@ router.patch('/profile', authMiddleware, (req, res) => {
 
   const newName = String(username || '').trim();
   if (newName && newName !== user.username) {
+    if (!NAME_RE.test(newName)) {
+      return res.status(400).json({ error: 'الاسم يحتوي رموزًا غير مسموحة (حروف وأرقام فقط، 2-40 خانة)' });
+    }
     const taken = db.getUserByUsername(newName);
     if (taken && taken.id !== user.id) {
       return res.status(409).json({ error: 'الاسم مستخدم من قبل' });
@@ -93,8 +99,8 @@ router.patch('/profile', authMiddleware, (req, res) => {
   }
 
   if (newPassword) {
-    if (String(newPassword).length < 4) {
-      return res.status(400).json({ error: 'كلمة المرور الجديدة قصيرة جدًا' });
+    if (String(newPassword).length < 6) {
+      return res.status(400).json({ error: 'كلمة المرور الجديدة قصيرة جدًا (6 أحرف على الأقل)' });
     }
     if (!verifyPassword(currentPassword || '', user.password_hash)) {
       return res.status(401).json({ error: 'كلمة المرور الحالية غير صحيحة' });

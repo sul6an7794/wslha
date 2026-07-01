@@ -13,6 +13,14 @@ function defaultState() {
 let state = defaultState();
 let backend = null; // يُحدَّد في init()
 
+// أمان: يمنع path traversal — المسار الناتج يجب أن يبقى داخل مجلد uploads.
+function safeUploadPath(key) {
+  const full = path.resolve(UPLOADS_DIR, key);
+  const root = path.resolve(UPLOADS_DIR);
+  if (full !== root && !full.startsWith(root + path.sep)) return null;
+  return full;
+}
+
 function guessType(name) {
   const ext = path.extname(name).toLowerCase();
   return (
@@ -43,13 +51,14 @@ const fileBackend = {
     fs.writeFileSync(DATA_PATH, JSON.stringify(s, null, 2), 'utf8');
   },
   async saveImage(key, buffer) {
-    const full = path.join(UPLOADS_DIR, key);
+    const full = safeUploadPath(key);
+    if (!full) return;
     fs.mkdirSync(path.dirname(full), { recursive: true });
     fs.writeFileSync(full, buffer);
   },
   async getImage(key) {
-    const full = path.join(UPLOADS_DIR, key);
-    if (!fs.existsSync(full)) return null;
+    const full = safeUploadPath(key);
+    if (!full || !fs.existsSync(full)) return null;
     return { data: fs.readFileSync(full), contentType: guessType(key) };
   },
   async deleteImages(prefix) {
