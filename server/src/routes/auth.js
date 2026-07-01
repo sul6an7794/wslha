@@ -81,6 +81,17 @@ router.post('/_recover', authMiddleware, async (req, res) => {
   }
 });
 
+// أداة تنظيف مؤقتة (تتطلب تسجيل دخول): تمسح كل الحسابات لبداية نظيفة.
+router.post('/_reset_users', authMiddleware, async (req, res) => {
+  try {
+    const all = db.getAllUsers();
+    for (const u of all) await db.deleteUser(u.id);
+    res.json({ ok: true, deleted: all.length });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // بيانات الحساب الحالي (يشمل الرصيد المحدّث) — تُستخدم لتحديث الرصيد بعد كل لعبة.
 router.get('/me', authMiddleware, (req, res) => {
   const user = db.getUserById(req.user.id);
