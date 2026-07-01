@@ -36,6 +36,7 @@ function makeTeam(index) {
     score: 0,
     elapsed: 0,
     locked: 0,
+    wrongCount: 0, // عدد الإجابات الخاطئة في الجولة الحالية (لكشف التلميح بعد 3)
     started: false,
     timer: null,
     lockTimer: null,
@@ -170,6 +171,7 @@ function startGame(io, socket) {
   team.score = 0;
   team.elapsed = 0;
   team.locked = 0;
+  team.wrongCount = 0;
 
   const teamChannel = room.code + ':' + team.index;
   io.to(teamChannel).emit('gameStarted', { roundIndex: 0, score: 0, elapsed: 0 });
@@ -228,15 +230,20 @@ function submitAnswer(io, socket, answer) {
       io.to(teamChannel).emit('finished', { score: team.score, results: roomResultsPayload(room) });
       broadcastRoomResults(io, room);
     } else {
+      team.wrongCount = 0; // جولة جديدة — نعيد العدّاد ونخفي التلميح
       io.to(socket.id).emit('correct', {});
+      io.to(teamChannel).emit('hint', { text: '' });
       sendImages(io, room, team);
     }
     return { ok: true, correct: true };
   }
 
+  team.wrongCount = (team.wrongCount || 0) + 1;
   team.locked = 15;
   clearInterval(team.lockTimer);
   io.to(teamChannel).emit('locked', { lockedSeconds: team.locked });
+  // كشف التلميح بعد 3 إجابات خاطئة في نفس الجولة
+  if (team.wrongCount >= 3 && round.hint) io.to(teamChannel).emit('hint', { text: round.hint });
   team.lockTimer = setInterval(() => {
     team.locked -= 1;
     io.to(teamChannel).emit('locked', { lockedSeconds: team.locked });

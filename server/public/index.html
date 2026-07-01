@@ -471,6 +471,8 @@
     <h3 style="font-size:17px; font-weight:800; margin:0 0 16px;">إضافة جولة جديدة</h3>
     <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
       <div style="flex:1; min-width:200px;">
+        <label style="display:block; font-size:13px; font-weight:700; margin-bottom:6px; color:#d8d6ee;">التلميح <span style="color:#6b6894; font-weight:500;">(يظهر بعد 3 محاولات خاطئة)</span></label>
+        <input value="{{ newHint }}" onInput="{{ setNewHint }}" placeholder="مثال: حيوان أليف" style="width:100%; font-family:'Tajawal',sans-serif; font-size:15px; color:#f1f0ff; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.14); border-radius:12px; padding:12px 14px; outline:none; margin-bottom:14px;" style-focus="border-color:rgba(129,140,248,.7);">
         <label style="display:block; font-size:13px; font-weight:700; margin-bottom:6px; color:#d8d6ee;">الإجابات المقبولة (افصل بفاصلة)</label>
         <input value="{{ newAnswers }}" onInput="{{ setNewAnswers }}" placeholder="كلب، جرو، بوكسر" style="width:100%; font-family:'Tajawal',sans-serif; font-size:15px; color:#f1f0ff; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.14); border-radius:12px; padding:12px 14px; outline:none;" style-focus="border-color:rgba(129,140,248,.7);">
       </div>
@@ -530,6 +532,12 @@
   </div>
 
   <div style="background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); border-radius:20px; padding:24px; backdrop-filter:blur(10px);">
+    <sc-if value="{{ hintShown }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; align-items:center; gap:10px; background:rgba(251,191,36,.14); border:1px solid rgba(251,191,36,.4); border-radius:14px; padding:14px 16px; margin-bottom:16px;">
+      <span style="font-size:20px;">💡</span>
+      <div><div style="font-size:12px; color:#fbbf24; font-weight:700;">تلميح</div><div style="font-size:16px; font-weight:800; color:#f1f0ff;">{{ hintText }}</div></div>
+    </div>
+    </sc-if>
     <sc-if value="{{ showMemberView }}" hint-placeholder-val="{{ false }}">
     <div style="text-align:center; padding:10px;">
       <div style="font-size:17px; font-weight:800; margin:0 0 6px;">اشرح صورتك لفريقك</div>
@@ -612,7 +620,7 @@ class Component extends DCLogic {
     maxPlayers: 3, created: false, roomCode: '',
     user: null, loginName: '', loginTab: 'login', regName: '', regPass: '',
     loading: false, offline: false, joinCode: '', joinName: '',
-    elapsed: 0, roundIndex: 0, answer: '', locked: 0, showHint: false, gameScore: 0,
+    elapsed: 0, roundIndex: 0, answer: '', locked: 0, showHint: false, gameScore: 0, hintText: '', hintShown: false, wrongCount: 0,
     role: 'captain',
     // الاتصال بالخادم
     token: null, connected: false, serverImage: null, lobbyPlayers: [], statusMsg: '',
@@ -782,10 +790,11 @@ class Component extends DCLogic {
     s.on('connect', () => this.setState({ connected: true }));
     s.on('disconnect', () => this.setState({ connected: false }));
     s.on('lobby', (p) => this.setState({ serverTeams: p.teams || [], roomCode: p.roomCode || this.state.roomCode }, () => this.maybeAutoStart()));
-    s.on('gameStarted', (st) => { this.stopTimer(); this.setState({ page: 'game', roundIndex: st.roundIndex, gameScore: st.score, elapsed: st.elapsed }); });
+    s.on('gameStarted', (st) => { this.stopTimer(); this.setState({ page: 'game', roundIndex: st.roundIndex, gameScore: st.score, elapsed: st.elapsed, hintShown: false, hintText: '', wrongCount: 0 }); });
     s.on('state', (st) => this.setState({ roundIndex: st.roundIndex, gameScore: st.score, elapsed: st.elapsed, locked: st.lockedSeconds }));
     s.on('yourImage', (im) => this.setState({ serverImage: im.src }));
     s.on('correct', () => this.setState({ answer: '', showHint: false }));
+    s.on('hint', (d) => this.setState({ hintText: (d && d.text) || '', hintShown: !!(d && d.text) }));
     s.on('locked', (d) => this.setState({ locked: d.lockedSeconds, answer: '' }));
     s.on('finished', (d) => { this.stopTimer(); this.setState({ page: 'results', gameScore: d.score, serverResults: (d.results && d.results.teams) || this.state.serverResults, serverTotal: (d.results && d.results.totalRounds) || this.state.serverTotal }); this.refreshMe(); });
     s.on('roomResults', (d) => this.setState({ serverResults: (d && d.teams) || [], serverTotal: (d && d.totalRounds) || this.state.serverTotal }));
@@ -861,11 +870,13 @@ class Component extends DCLogic {
       return al === ans || al.includes(ans) || ans.includes(al);
     });
     if (ok) {
-      this.setState(s2 => ({ roundIndex: s2.roundIndex + 1, answer: '', showHint: false, gameScore: s2.gameScore + 1 }), () => {
+      this.setState(s2 => ({ roundIndex: s2.roundIndex + 1, answer: '', showHint: false, hintShown: false, hintText: '', wrongCount: 0, gameScore: s2.gameScore + 1 }), () => {
         if (this.state.roundIndex >= R.length) { this.stopTimer(); this.go('results'); }
       });
     } else {
-      this.setState({ locked: 15, answer: '', showHint: false });
+      const nw = (this.state.wrongCount || 0) + 1;
+      const reveal = nw >= 3 && img && img.hint;
+      this.setState({ locked: 15, answer: '', wrongCount: nw, hintShown: reveal ? true : this.state.hintShown, hintText: reveal ? img.hint : this.state.hintText });
       this.startPenalty();
     }
   }
@@ -1234,7 +1245,7 @@ class Component extends DCLogic {
       roomCode: this.state.roomCode, qrCells: this.qrCells(),
       shareUrl: this.shareUrl(), copyShare: () => this.copyShare(),
       shareBtnLabel: this.state.shareCopied ? 'تم النسخ' : 'نسخ الرابط',
-      elapsedDisplay, roundNumber: String(ri + 1), roundTotal: String(total),
+      elapsedDisplay, roundNumber: String(ri + 1), roundTotal: String(total), hintShown: this.state.hintShown, hintText: this.state.hintText || '',
       playerLabel: uname + ' · ' + activeCode,
       currentImageEl: React.createElement('img', { src: this.state.serverImage || cur.src, alt: 'صورة الجولة', style: { width: '100%', maxHeight: '62vh', objectFit: 'contain', display: 'block', margin: '0 auto' } }),
       zoomImageEl: React.createElement('img', { src: this.state.serverImage || cur.src, alt: 'صورة الجولة مكبّرة', style: { maxWidth: '92vw', maxHeight: '84vh', objectFit: 'contain', borderRadius: '16px', boxShadow: '0 30px 80px rgba(0,0,0,.6)' } }),
