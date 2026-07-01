@@ -53,6 +53,7 @@ function createRoom(io, socket, { maxPlayers }) {
     maxPlayers: mp,
     teams: Array.from({ length: numTeams }, (_, i) => makeTeam(i)),
     rounds: loadPlayableRounds(),
+    results: [], // نتائج الفرق المنتهية داخل هذه الغرفة
   };
   rooms.set(code, room);
   socket.join(code);
@@ -78,6 +79,27 @@ function teamSummary(room) {
 
 function broadcastLobby(io, room) {
   io.to(room.code).emit('lobby', { roomCode: room.code, teams: teamSummary(room) });
+}
+
+// تسجيل نتيجة فريق انتهى، وبثّ لوحة ترتيب فرق الغرفة (الأعلى نقاطًا ثم الأسرع).
+function recordResult(room, team) {
+  room.results = (room.results || []).filter((r) => r.index !== team.index);
+  room.results.push({
+    index: team.index,
+    name: team.name || 'فريق ' + (team.index + 1),
+    score: team.score,
+    elapsed: team.elapsed,
+  });
+}
+function roomResultsPayload(room) {
+  const teams = (room.results || [])
+    .slice()
+    .sort((a, b) => b.score - a.score || a.elapsed - b.elapsed)
+    .map((r) => ({ index: r.index, name: r.name, score: r.score, elapsed: r.elapsed }));
+  return { roomCode: room.code, teams, totalRounds: room.rounds.length };
+}
+function broadcastRoomResults(io, room) {
+  io.to(room.code).emit('roomResults', roomResultsPayload(room));
 }
 
 // لاعب يختار فريقًا (أو ينضم لفريق فيه أعضاء وفاضي مكان فيه).
@@ -202,7 +224,9 @@ function submitAnswer(io, socket, answer) {
       clearInterval(team.timer);
       team.timer = null;
       team.started = false;
-      io.to(teamChannel).emit('finished', { score: team.score });
+      recordResult(room, team);
+      io.to(teamChannel).emit('finished', { score: team.score, results: roomResultsPayload(room) });
+      broadcastRoomResults(io, room);
     } else {
       io.to(socket.id).emit('correct', {});
       sendImages(io, room, team);

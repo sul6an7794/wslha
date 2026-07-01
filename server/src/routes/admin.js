@@ -50,7 +50,15 @@ router.delete('/rounds/:id', (req, res) => {
 
 // نخزّن الصورة في الذاكرة ثم نكتبها عبر طبقة التخزين (MongoDB أو ملف محلي).
 // الحد 12MB لكل صورة حتى تبقى ضمن حد مستند MongoDB (16MB).
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 12 * 1024 * 1024 } });
+// أمان: نقبل صورًا فقط (نمنع رفع ملفات قد تُخدَّم كـ HTML/سكربت).
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 12 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (/^image\//.test(file.mimetype)) cb(null, true);
+    else cb(new Error('يُسمح بالصور فقط'));
+  },
+});
 
 router.post('/rounds/:id/images', (req, res) => {
   upload.array('images', 12)(req, res, async (err) => {

@@ -148,6 +148,12 @@ async function init() {
     state = loaded || defaultState();
     console.log('التخزين: ملف data.json محلي (مؤقت) — اضبط MONGODB_URI للتخزين الدائم.');
   }
+  // ترقية: ضمان وجود حقل الرصيد للحسابات القديمة
+  let migrated = false;
+  for (const u of state.users) {
+    if (typeof u.credits !== 'number') { u.credits = STARTING_CREDITS; migrated = true; }
+  }
+  if (migrated) save();
 }
 
 function save() {
@@ -175,17 +181,40 @@ function getUserByUsername(username) {
 function getUsersCount() {
   return state.users.length;
 }
+const STARTING_CREDITS = 1; // رصيد البداية لكل حساب جديد: تذكرة مجانية واحدة
+
 function insertUser({ username, password_hash, is_admin }) {
   const user = {
     id: nextId('users'),
     username,
     password_hash,
     is_admin: is_admin ? 1 : 0,
+    credits: STARTING_CREDITS,
     created_at: new Date().toISOString(),
   };
   state.users.push(user);
   save();
   return user;
+}
+function getUserById(id) {
+  return state.users.find((u) => u.id === Number(id)) || null;
+}
+// تحديث اسم المستخدم و/أو كلمة المرور. يرجّع المستخدم المحدّث أو null.
+function updateUserFields(id, fields) {
+  const u = getUserById(id);
+  if (!u) return null;
+  if (fields.username) u.username = fields.username;
+  if (fields.password_hash) u.password_hash = fields.password_hash;
+  save();
+  return u;
+}
+// تعديل الرصيد بمقدار delta (سالب = خصم). يرجّع الرصيد الجديد أو null.
+function addCredits(id, delta) {
+  const u = getUserById(id);
+  if (!u) return null;
+  u.credits = Math.max(0, (u.credits || 0) + delta);
+  save();
+  return u.credits;
 }
 
 // ---- الصور المرتبطة بجولة ----
@@ -275,6 +304,9 @@ module.exports = {
   saveImage,
   getImage,
   getUserByUsername,
+  getUserById,
+  updateUserFields,
+  addCredits,
   getUsersCount,
   insertUser,
   getRounds,

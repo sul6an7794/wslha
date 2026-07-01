@@ -1,5 +1,10 @@
 node_modules/
 .env
+server/.env
+server/_dnsfix.js
+# لوقات وقت التشغيل ونسخ احتياطية مؤقتة
+*.log
+server/public/*.old-*
 # بيانات وقت التشغيل (تُنشأ تلقائيًا على السيرفر)
 server/data.json
 server/uploads/

@@ -1,5 +1,8 @@
 const { verifyToken } = require('./auth');
 const roomsMgr = require('./rooms');
+const db = require('./db');
+
+const ROOM_COST = 1; // كلفة إنشاء لعبة جديدة بالكريدت
 
 function registerSocket(io) {
   io.on('connection', (socket) => {
@@ -10,8 +13,19 @@ function registerSocket(io) {
 
     socket.on('createRoom', (data, cb) => {
       try {
+        const u = socket.data.user;
+        // المستخدم المسجّل يدفع كريدت لكل لعبة؛ الضيف (غير مسجّل) يلعب محليًا بدون خصم.
+        if (u && u.id) {
+          const acct = db.getUserById(u.id);
+          if (acct && (acct.credits || 0) < ROOM_COST) {
+            cb && cb({ ok: false, error: 'رصيدك لا يكفي لإنشاء لعبة جديدة', credits: acct.credits || 0 });
+            return;
+          }
+        }
         const room = roomsMgr.createRoom(io, socket, data || {});
-        cb && cb({ ok: true, roomCode: room.code, teams: roomsMgr.teamSummary(room) });
+        let credits;
+        if (u && u.id) credits = db.addCredits(u.id, -ROOM_COST);
+        cb && cb({ ok: true, roomCode: room.code, teams: roomsMgr.teamSummary(room), credits });
       } catch (e) {
         cb && cb({ ok: false, error: 'تعذّر إنشاء الغرفة' });
       }

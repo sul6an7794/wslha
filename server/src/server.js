@@ -14,8 +14,18 @@ const { registerSocket } = require('./socket');
 const app = express();
 // خلف بروكسي (Render/Railway) — يخلي req.protocol = https حتى تطلع روابط الصور بـ https وما تنكسر بصفحة https.
 app.set('trust proxy', true);
+app.disable('x-powered-by');
+
+// ترويسات أمان أساسية
+app.use((req, res, next) => {
+  res.set('X-Content-Type-Options', 'nosniff');
+  res.set('X-Frame-Options', 'SAMEORIGIN');
+  res.set('Referrer-Policy', 'no-referrer');
+  next();
+});
+
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 
 // الواجهة (ملف HTML المستقل) تُخدَّم من نفس السيرفر — نشر كخدمة واحدة، وبدون مشاكل CORS.
 const publicDir = path.join(__dirname, '..', 'public');
@@ -32,7 +42,10 @@ app.get('/img/*', async (req, res) => {
   try {
     const img = await db.getImage(req.params[0]);
     if (!img) return res.status(404).json({ error: 'الصورة غير موجودة' });
-    res.set('Content-Type', img.contentType || 'application/octet-stream');
+    // أمان: لا نخدّم إلا أنواع صور؛ أي شيء آخر يُنزَّل كملف بدل تنفيذه بالمتصفح.
+    const ct = /^image\//.test(img.contentType || '') ? img.contentType : 'application/octet-stream';
+    if (ct === 'application/octet-stream') res.set('Content-Disposition', 'attachment');
+    res.set('Content-Type', ct);
     res.set('Cache-Control', 'public, max-age=31536000, immutable');
     res.send(img.data);
   } catch (e) {

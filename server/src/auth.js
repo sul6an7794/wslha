@@ -1,7 +1,16 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'team-quest-dev-secret-change-me';
+// أمان: لا نستخدم أي مفتاح احتياطي معروف. لو JWT_SECRET غير مضبوط نولّد مفتاحًا
+// عشوائيًا لكل تشغيل (الجلسات تنتهي عند إعادة التشغيل) — يمنع تزوير التوكنات.
+let JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  JWT_SECRET = crypto.randomBytes(48).toString('hex');
+  console.warn(
+    '⚠️  JWT_SECRET غير مضبوط — تم توليد مفتاح عشوائي مؤقت. اضبط JWT_SECRET في بيئة الإنتاج لتبقى الجلسات ثابتة.'
+  );
+}
 
 function hashPassword(pw) {
   return bcrypt.hashSync(pw, 10);
