@@ -918,14 +918,17 @@ class Component extends DCLogic {
     if (!code) return;
     const pname = (this.state.joinName || '').trim() || (this.state.user && this.state.user.username);
     const s = this.connectSocket();
-    if (s && s.connected) {
+    if (s) {
+      let done = false;
+      const fallback = setTimeout(() => { if (!done) { done = true; this.setState({ roomCode: code, serverTeams: this.localTeams(1), myTeamIndex: null, role: null, namingTeam: null, offline: true }, () => this.go('teams')); } }, 3500);
       s.emit('joinRoom', { roomCode: code, name: pname }, (res) => {
+        if (done) return; done = true; clearTimeout(fallback);
         if (res && res.ok) {
-          this.setState({ roomCode: String(res.roomCode || code), serverTeams: res.teams || [], myTeamIndex: null, role: null, namingTeam: null, statusMsg: '' }, () => this.go('teams'));
+          this.setState({ roomCode: String(res.roomCode || code), serverTeams: res.teams || [], myTeamIndex: null, role: null, namingTeam: null, offline: false, statusMsg: '' }, () => this.go('teams'));
         } else this.setState({ statusMsg: (res && res.error) || 'تعذّر الانضمام' });
       });
     } else {
-      this.setState({ roomCode: code, serverTeams: this.localTeams(4), myTeamIndex: null, role: null, namingTeam: null }, () => this.go('teams'));
+      this.setState({ roomCode: code, serverTeams: this.localTeams(1), myTeamIndex: null, role: null, namingTeam: null, offline: true }, () => this.go('teams'));
     }
   }
   setAnswer(e) { this.setState({ answer: e.target.value }); }

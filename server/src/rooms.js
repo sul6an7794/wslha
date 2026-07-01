@@ -242,14 +242,14 @@ function submitAnswer(io, socket, answer) {
   team.locked = 15;
   clearInterval(team.lockTimer);
   io.to(teamChannel).emit('locked', { lockedSeconds: team.locked });
-  // كشف التلميح بعد 3 إجابات خاطئة في نفس الجولة
-  if (team.wrongCount >= 3 && round.hint) io.to(teamChannel).emit('hint', { text: round.hint });
   team.lockTimer = setInterval(() => {
     team.locked -= 1;
     io.to(teamChannel).emit('locked', { lockedSeconds: team.locked });
     if (team.locked <= 0) {
       clearInterval(team.lockTimer);
       team.lockTimer = null;
+      // كشف التلميح عند انتهاء قفل الإجابة الخاطئة الثالثة (مو فورًا)
+      if (team.wrongCount >= 3 && round.hint) io.to(teamChannel).emit('hint', { text: round.hint });
     }
   }, 1000);
   return { ok: true, correct: false, lockedSeconds: team.locked };
