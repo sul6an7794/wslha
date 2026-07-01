@@ -190,10 +190,16 @@ async function init() {
 
 // ---- استرجاع البيانات القديمة من النسخة الاحتياطية (appstate) ----
 async function recoverFromLegacy() {
-  if (!backend || !backend.recoverFromLegacy) return { legacyFound: false, note: 'وضع الملف المحلي — لا نسخة قديمة' };
+  const hasMongoUri = !!process.env.MONGODB_URI;
+  const uriLen = (process.env.MONGODB_URI || '').length;
+  if (!backend || !backend.recoverFromLegacy) {
+    return { storage: 'file (مؤقت!)', hasMongoUri, uriLen, note: 'السيرفر لا يستخدم MongoDB — تحقق من متغيّر MONGODB_URI في Render' };
+  }
   const report = await backend.recoverFromLegacy();
   const loaded = await backend.loadAll();
   if (loaded) state = loaded; // تحديث الذاكرة بالبيانات المستعادة
+  report.storage = 'mongodb';
+  report.hasMongoUri = hasMongoUri;
   report.nowUsers = state.users.length;
   report.nowRounds = state.rounds.length;
   return report;
