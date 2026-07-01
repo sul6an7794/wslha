@@ -216,6 +216,35 @@ function addCredits(id, delta) {
   save();
   return u.credits;
 }
+// كل المستخدمين (بدون كلمة المرور) — لعرضهم في لوحة التحكم.
+function getAllUsers() {
+  return state.users
+    .slice()
+    .sort((a, b) => a.id - b.id)
+    .map((u) => ({ id: u.id, username: u.username, isAdmin: !!u.is_admin, credits: u.credits || 0, created_at: u.created_at }));
+}
+function deleteUser(id) {
+  const before = state.users.length;
+  state.users = state.users.filter((u) => u.id !== Number(id));
+  const changed = state.users.length !== before;
+  if (changed) save();
+  return changed;
+}
+function setUserAdmin(id, isAdmin) {
+  const u = getUserById(id);
+  if (!u) return null;
+  u.is_admin = isAdmin ? 1 : 0;
+  save();
+  return u;
+}
+function setUserCredits(id, credits) {
+  const u = getUserById(id);
+  if (!u) return null;
+  const n = Math.floor(Number(credits));
+  u.credits = Number.isFinite(n) && n >= 0 ? n : 0;
+  save();
+  return u;
+}
 
 // ---- الصور المرتبطة بجولة ----
 // كل صورة عندها "position" (رقم اللاعب اللي يستلمها): 1 = أول صورة ترفع، 2 = الثانية، وهكذا.
@@ -307,6 +336,10 @@ module.exports = {
   getUserById,
   updateUserFields,
   addCredits,
+  getAllUsers,
+  deleteUser,
+  setUserAdmin,
+  setUserCredits,
   getUsersCount,
   insertUser,
   getRounds,
