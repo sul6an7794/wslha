@@ -38,7 +38,7 @@ setInterval(() => {
 
 const authLimit = rateLimit(20, 5 * 60 * 1000); // 20 محاولة كل 5 دقائق لكل IP
 
-router.post('/register', authLimit, (req, res) => {
+router.post('/register', authLimit, async (req, res) => {
   const { username, password } = req.body || {};
   const name = String(username || '').trim();
   if (!name || !password) {
@@ -55,7 +55,7 @@ router.post('/register', authLimit, (req, res) => {
   }
   const isAdmin = db.getUsersCount() === 0; // أول من يسجّل يصبح مشرفًا تلقائيًا
   const hash = hashPassword(password);
-  const user = db.insertUser({ username: name, password_hash: hash, is_admin: isAdmin });
+  const user = await db.insertUser({ username: name, password_hash: hash, is_admin: isAdmin });
   const token = signToken(user);
   res.json({ token, user: publicUser(user) });
 });
@@ -79,7 +79,7 @@ router.get('/me', authMiddleware, (req, res) => {
 });
 
 // تعديل الملف الشخصي: تغيير الاسم و/أو كلمة المرور.
-router.patch('/profile', authMiddleware, (req, res) => {
+router.patch('/profile', authMiddleware, async (req, res) => {
   const user = db.getUserById(req.user.id);
   if (!user) return res.status(404).json({ error: 'الحساب غير موجود' });
 
@@ -112,7 +112,7 @@ router.patch('/profile', authMiddleware, (req, res) => {
     return res.status(400).json({ error: 'لا يوجد تغيير' });
   }
 
-  const updated = db.updateUserFields(user.id, fields);
+  const updated = await db.updateUserFields(user.id, fields);
   // إذا تغيّر الاسم نُصدر توكن جديد لأن الاسم مضمّن فيه.
   const token = fields.username ? signToken(updated) : undefined;
   res.json({ user: publicUser(updated), token });

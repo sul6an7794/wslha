@@ -84,7 +84,7 @@ const PORT = process.env.PORT || 3001;
 
 async function start() {
   await db.init(); // يهيّئ التخزين (MongoDB أو ملف محلي) ويحمّل البيانات
-  seedDefaults(); // يضيف الجولات الافتراضية فقط لو ما فيه أي جولات
+  await seedDefaults(); // يضيف الجولات الافتراضية فقط لو ما فيه أي جولات
 
   const server = http.createServer(app);
   const io = new Server(server, { cors: { origin: '*' } });

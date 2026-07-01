@@ -1,7 +1,7 @@
 const db = require('./db');
 
 // بيانات تجريبية افتراضية حتى تقدر تجرب اللعبة فورًا بدون تعبئة لوحة التحكم يدويًا أولاً.
-function seedDefaults() {
+async function seedDefaults() {
   if (db.getRoundsCount() > 0) return;
 
   const defaults = [
@@ -44,8 +44,8 @@ function seedDefaults() {
   ];
 
   for (const r of defaults) {
-    const round = db.insertRound({ hint: r.hint, answers: r.answers });
-    for (const url of r.images) db.insertRoundImage(round.id, { filename: url, url });
+    const round = await db.insertRound({ hint: r.hint, answers: r.answers });
+    for (const url of r.images) await db.insertRoundImage(round.id, { filename: url, url });
   }
 }
 

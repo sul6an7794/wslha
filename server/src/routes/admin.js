@@ -23,7 +23,7 @@ router.get('/rounds', (req, res) => {
   res.json(db.getRounds().map(toApiRound));
 });
 
-router.post('/rounds', (req, res) => {
+router.post('/rounds', async (req, res) => {
   const { hint, answers, hintPlayerIndex } = req.body || {};
   // الإجابة إجبارية (إجابة واحدة على الأقل). التلميح اختياري، وإذا تُرك فاضي فلا تلميح لهذي الجولة.
   const list = String(answers || '')
@@ -35,7 +35,7 @@ router.post('/rounds', (req, res) => {
   if (!list.length) {
     return res.status(400).json({ error: 'الإجابة مطلوبة (إجابة واحدة على الأقل)' });
   }
-  const round = db.insertRound({
+  const round = await db.insertRound({
     hint: String(hint || '').trim(),
     answers: list,
     hintPlayerIndex,
@@ -43,8 +43,8 @@ router.post('/rounds', (req, res) => {
   res.json(toApiRound(round));
 });
 
-router.delete('/rounds/:id', (req, res) => {
-  db.deleteRound(req.params.id);
+router.delete('/rounds/:id', async (req, res) => {
+  await db.deleteRound(req.params.id);
   res.json({ ok: true });
 });
 
@@ -90,7 +90,7 @@ router.post('/rounds/:id/images', (req, res) => {
         const key = 'rounds/' + roundId + '/' + filename;
         await db.saveImage(key, buf, contentType);
         const url = origin + '/img/' + key;
-        db.insertRoundImage(roundId, { filename, url });
+        await db.insertRoundImage(roundId, { filename, url });
       }
       res.json(toApiRound(db.getRound(roundId)));
     } catch (e) {
@@ -101,11 +101,11 @@ router.post('/rounds/:id/images', (req, res) => {
 });
 
 // تغيير أي لاعب يستلم صورة معيّنة (1 = أول لاعب، 2 = ثاني لاعب، ...). الافتراضي تلقائي بحسب ترتيب الرفع.
-router.patch('/rounds/:id/images/:imageId', (req, res) => {
+router.patch('/rounds/:id/images/:imageId', async (req, res) => {
   const round = db.getRound(req.params.id);
   if (!round) return res.status(404).json({ error: 'الجولة غير موجودة' });
   const { playerIndex } = req.body || {};
-  db.setImagePosition(req.params.id, req.params.imageId, playerIndex);
+  await db.setImagePosition(req.params.id, req.params.imageId, playerIndex);
   res.json(toApiRound(db.getRound(req.params.id)));
 });
 
@@ -125,7 +125,7 @@ router.get('/users', (req, res) => {
 });
 
 // تعديل رصيد و/أو صلاحية مشرف لمستخدم. المشرف لا يقدر ينزّل صلاحية نفسه (تفاديًا للقفل).
-router.patch('/users/:id', (req, res) => {
+router.patch('/users/:id', async (req, res) => {
   const id = Number(req.params.id);
   const target = db.getUserById(id);
   if (!target) return res.status(404).json({ error: 'المستخدم غير موجود' });
@@ -133,25 +133,25 @@ router.patch('/users/:id', (req, res) => {
   if (credits != null) {
     const n = Number(credits);
     if (!Number.isFinite(n) || n < 0) return res.status(400).json({ error: 'قيمة رصيد غير صحيحة' });
-    db.setUserCredits(id, n);
+    await db.setUserCredits(id, n);
   }
   if (isAdmin != null) {
     if (id === req.user.id && !isAdmin) {
       return res.status(400).json({ error: 'لا يمكنك إزالة صلاحية المشرف عن نفسك' });
     }
-    db.setUserAdmin(id, !!isAdmin);
+    await db.setUserAdmin(id, !!isAdmin);
   }
   const u = db.getUserById(id);
   res.json({ id: u.id, username: u.username, isAdmin: !!u.is_admin, credits: u.credits || 0, created_at: u.created_at });
 });
 
 // حذف مستخدم — لا يقدر المشرف يحذف نفسه.
-router.delete('/users/:id', (req, res) => {
+router.delete('/users/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (id === req.user.id) {
     return res.status(400).json({ error: 'لا يمكنك حذف حسابك أنت' });
   }
-  const ok = db.deleteUser(id);
+  const ok = await db.deleteUser(id);
   if (!ok) return res.status(404).json({ error: 'المستخدم غير موجود' });
   res.json({ ok: true });
 });

@@ -1,18 +1,26 @@
 const fs = require('fs');
 const path = require('path');
 
-// التخزين: الحالة كلها تبقى في الذاكرة (state) — فبقية الكود يقرأ منها بشكل متزامن كما هو.
-// الحفظ/التحميل يتم عبر "backend": إمّا MongoDB (دائم) إذا وُجد MONGODB_URI، أو ملف data.json محلي.
+// التخزين: الحالة تُحفظ في الذاكرة (state) للقراءة المتزامنة السريعة، والكتابة تتم
+// بشكل **ذري لكل عنصر** (مستند مستقل لكل مستخدم/جولة/صورة) — فلا يوجد "حفظ للكل"
+// يمكن أن يدوس على البيانات. يمنع فقدان البيانات نهائيًا.
 const DATA_PATH = path.join(__dirname, '..', 'data.json');
 const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
+const STARTING_CREDITS = 1; // رصيد البداية لكل حساب جديد: تذكرة مجانية واحدة
 
 function defaultState() {
   return { users: [], rounds: [], round_images: [], nextIds: { users: 1, rounds: 1, round_images: 1 } };
 }
-
 let state = defaultState();
-let backend = null; // يُحدَّد في init()
+let backend = null;
 
+function guessType(name) {
+  const ext = path.extname(name).toLowerCase();
+  return (
+    { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml' }[ext] ||
+    'application/octet-stream'
+  );
+}
 // أمان: يمنع path traversal — المسار الناتج يجب أن يبقى داخل مجلد uploads.
 function safeUploadPath(key) {
   const full = path.resolve(UPLOADS_DIR, key);
@@ -21,35 +29,34 @@ function safeUploadPath(key) {
   return full;
 }
 
-function guessType(name) {
-  const ext = path.extname(name).toLowerCase();
-  return (
-    {
-      '.png': 'image/png',
-      '.jpg': 'image/jpeg',
-      '.jpeg': 'image/jpeg',
-      '.gif': 'image/gif',
-      '.webp': 'image/webp',
-      '.svg': 'image/svg+xml',
-    }[ext] || 'application/octet-stream'
-  );
-}
-
-// ---------- Backend: ملف محلي (للتجربة بدون أي خدمة خارجية) ----------
+// ---------- Backend: ملف محلي (عملية واحدة، لا تزامن — حفظ الملف كامل بسيط وآمن) ----------
 const fileBackend = {
-  loadState() {
+  async connect() {},
+  async loadAll() {
     if (fs.existsSync(DATA_PATH)) {
       try {
         return JSON.parse(fs.readFileSync(DATA_PATH, 'utf8'));
       } catch (e) {
-        // ملف تالف — نبدأ من جديد
+        /* ملف تالف — نبدأ من جديد */
       }
     }
     return null;
   },
-  saveState(s) {
-    fs.writeFileSync(DATA_PATH, JSON.stringify(s, null, 2), 'utf8');
+  _save() {
+    fs.writeFileSync(DATA_PATH, JSON.stringify(state, null, 2), 'utf8');
   },
+  async nextId(kind) {
+    const id = state.nextIds[kind] || 1;
+    state.nextIds[kind] = id + 1;
+    return id;
+  },
+  async putUser() { this._save(); },
+  async delUser() { this._save(); },
+  async putRound() { this._save(); },
+  async delRound() { this._save(); },
+  async putImageMeta() { this._save(); },
+  async putImagesMeta() { this._save(); },
+  async delImagesMetaForRound() { this._save(); },
   async saveImage(key, buffer) {
     const full = safeUploadPath(key);
     if (!full) return;
@@ -61,230 +68,183 @@ const fileBackend = {
     if (!full || !fs.existsSync(full)) return null;
     return { data: fs.readFileSync(full), contentType: guessType(key) };
   },
-  async deleteImages(prefix) {
-    const dir = path.join(UPLOADS_DIR, prefix);
-    try {
-      fs.rmSync(dir, { recursive: true, force: true });
-    } catch (e) {
-      /* لا يهم لو ما كان موجودًا */
-    }
+  async delImagesFiles(prefix) {
+    try { fs.rmSync(path.join(UPLOADS_DIR, prefix), { recursive: true, force: true }); } catch (e) {}
   },
 };
 
-// ---------- Backend: MongoDB (تخزين دائم على السحابة) ----------
+// ---------- Backend: MongoDB (مجموعات مستقلة + عدّاد ذري + ترحيل آمن) ----------
 function makeMongoBackend(uri) {
   const mongoose = require('mongoose');
-  const StateModel = mongoose.model(
-    'AppState',
-    new mongoose.Schema({ _id: String, json: String }, { collection: 'appstate', versionKey: false })
-  );
-  const ImageModel = mongoose.model(
-    'Image',
-    new mongoose.Schema(
-      { _id: String, contentType: String, data: Buffer },
-      { collection: 'images', versionKey: false }
-    )
-  );
+  const flex = (coll) => mongoose.model('m_' + coll, new mongoose.Schema({ _id: Number }, { strict: false, versionKey: false, id: false }), coll);
+  const User = flex('users');
+  const Round = flex('rounds');
+  const ImageMeta = flex('round_images');
+  const Counter = mongoose.model('m_counters', new mongoose.Schema({ _id: String, seq: Number }, { versionKey: false }), 'counters');
+  const ImageBlob = mongoose.model('m_images', new mongoose.Schema({ _id: String, contentType: String, data: Buffer }, { versionKey: false }), 'images');
+  const Legacy = mongoose.model('m_appstate', new mongoose.Schema({ _id: String, json: String }, { versionKey: false }), 'appstate');
 
-  let saveTimer = null;
-  let pendingState = null;
-
-  async function flush() {
-    saveTimer = null;
-    const s = pendingState;
-    pendingState = null;
-    if (!s) return;
-    await StateModel.updateOne({ _id: 'state' }, { $set: { json: JSON.stringify(s) } }, { upsert: true });
-  }
+  const clean = (arr) => arr.map((d) => { const o = Object.assign({}, d); delete o._id; return o; });
 
   return {
-    async connect() {
-      await mongoose.connect(uri, { serverSelectionTimeoutMS: 15000 });
-    },
-    async loadState() {
-      const doc = await StateModel.findById('state').lean();
-      if (doc && doc.json) {
-        try {
-          return JSON.parse(doc.json);
-        } catch (e) {
-          /* تجاهل */
+    async connect() { await mongoose.connect(uri, { serverSelectionTimeoutMS: 15000 }); },
+    async loadAll() {
+      // ترحيل لمرة واحدة: لو مجموعة users فاضية والنسخة القديمة (appstate) موجودة → استوردها.
+      const count = await User.estimatedDocumentCount();
+      if (count === 0) {
+        const legacy = await Legacy.findById('state').lean();
+        if (legacy && legacy.json) {
+          try {
+            const s = JSON.parse(legacy.json);
+            if (Array.isArray(s.users) && s.users.length)
+              await User.insertMany(s.users.map((u) => Object.assign({}, u, { _id: u.id })), { ordered: false }).catch(() => {});
+            if (Array.isArray(s.rounds) && s.rounds.length)
+              await Round.insertMany(s.rounds.map((r) => Object.assign({}, r, { _id: r.id })), { ordered: false }).catch(() => {});
+            if (Array.isArray(s.round_images) && s.round_images.length)
+              await ImageMeta.insertMany(s.round_images.map((i) => Object.assign({}, i, { _id: i.id })), { ordered: false }).catch(() => {});
+            const ni = s.nextIds || {};
+            for (const k of ['users', 'rounds', 'round_images'])
+              await Counter.updateOne({ _id: k }, { $set: { seq: Math.max(0, (ni[k] || 1) - 1) } }, { upsert: true });
+            console.log('✅ تم ترحيل البيانات القديمة للتصميم الجديد (النسخة القديمة محفوظة كنسخة احتياطية).');
+          } catch (e) {
+            console.error('تنبيه: فشل ترحيل البيانات القديمة:', e.message);
+          }
         }
       }
-      return null;
+      const [users, rounds, images, counters] = await Promise.all([
+        User.find().lean(), Round.find().lean(), ImageMeta.find().lean(), Counter.find().lean(),
+      ]);
+      const nextIds = { users: 1, rounds: 1, round_images: 1 };
+      for (const c of counters) nextIds[c._id] = (c.seq || 0) + 1;
+      return { users: clean(users), rounds: clean(rounds), round_images: clean(images), nextIds };
     },
-    // الحفظ مُجمَّع (debounced) حتى لا نكتب على كل تعديل صغير عند الإضافة المتتابعة.
-    saveState(s) {
-      pendingState = s;
-      if (!saveTimer) {
-        saveTimer = setTimeout(() => {
-          flush().catch((e) => console.error('فشل حفظ الحالة في MongoDB:', e.message));
-        }, 250);
-      }
+    async nextId(kind) {
+      const r = await Counter.findOneAndUpdate({ _id: kind }, { $inc: { seq: 1 } }, { upsert: true, new: true });
+      return r.seq;
     },
+    async putUser(u) { await User.updateOne({ _id: u.id }, { $set: u }, { upsert: true }); },
+    async delUser(id) { await User.deleteOne({ _id: id }); },
+    async putRound(r) { await Round.updateOne({ _id: r.id }, { $set: r }, { upsert: true }); },
+    async delRound(id) { await Round.deleteOne({ _id: id }); },
+    async putImageMeta(i) { await ImageMeta.updateOne({ _id: i.id }, { $set: i }, { upsert: true }); },
+    async putImagesMeta(list) { await Promise.all(list.map((i) => ImageMeta.updateOne({ _id: i.id }, { $set: i }, { upsert: true }))); },
+    async delImagesMetaForRound(rid) { await ImageMeta.deleteMany({ round_id: rid }); },
     async saveImage(key, buffer, contentType) {
-      await ImageModel.updateOne(
-        { _id: key },
-        { $set: { contentType: contentType || guessType(key), data: buffer } },
-        { upsert: true }
-      );
+      await ImageBlob.updateOne({ _id: key }, { $set: { contentType: contentType || guessType(key), data: buffer } }, { upsert: true });
     },
     async getImage(key) {
-      const doc = await ImageModel.findById(key).lean();
-      if (!doc) return null;
-      const data = Buffer.isBuffer(doc.data) ? doc.data : Buffer.from(doc.data.buffer || doc.data);
-      return { data, contentType: doc.contentType };
+      const d = await ImageBlob.findById(key).lean();
+      if (!d) return null;
+      const data = Buffer.isBuffer(d.data) ? d.data : Buffer.from(d.data.buffer || d.data);
+      return { data, contentType: d.contentType };
     },
-    async deleteImages(prefix) {
-      const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      await ImageModel.deleteMany({ _id: new RegExp('^' + escaped) });
+    async delImagesFiles(prefix) {
+      const esc = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      await ImageBlob.deleteMany({ _id: new RegExp('^' + esc) });
     },
   };
 }
 
-// ---------- التهيئة: تُستدعى مرّة واحدة قبل تشغيل السيرفر ----------
+// ---------- التهيئة ----------
 async function init() {
   const uri = process.env.MONGODB_URI;
   if (uri) {
-    const mb = makeMongoBackend(uri);
-    await mb.connect();
-    backend = mb;
-    const loaded = await mb.loadState();
+    backend = makeMongoBackend(uri);
+    await backend.connect();
+    const loaded = await backend.loadAll();
     state = loaded || defaultState();
-    console.log('التخزين: MongoDB (دائم) ✅');
+    console.log('التخزين: MongoDB (مجموعات مستقلة، دائم) ✅');
   } else {
     backend = fileBackend;
-    const loaded = fileBackend.loadState();
+    const loaded = await backend.loadAll();
     state = loaded || defaultState();
     console.log('التخزين: ملف data.json محلي (مؤقت) — اضبط MONGODB_URI للتخزين الدائم.');
   }
   // ترقية: ضمان وجود حقل الرصيد للحسابات القديمة
-  let migrated = false;
   for (const u of state.users) {
-    if (typeof u.credits !== 'number') { u.credits = STARTING_CREDITS; migrated = true; }
+    if (typeof u.credits !== 'number') { u.credits = STARTING_CREDITS; await backend.putUser(u).catch(() => {}); }
   }
-  if (migrated) save();
 }
 
-function save() {
-  if (backend) backend.saveState(state);
-}
+// ---- تخزين/جلب الصور ----
+function saveImage(key, buffer, contentType) { return backend.saveImage(key, buffer, contentType); }
+function getImage(key) { return backend.getImage(key); }
 
-function nextId(kind) {
-  const id = state.nextIds[kind] || 1;
-  state.nextIds[kind] = id + 1;
-  return id;
-}
-
-// ---- تخزين/جلب الصور (يمرّ عبر الـ backend الحالي) ----
-function saveImage(key, buffer, contentType) {
-  return backend.saveImage(key, buffer, contentType);
-}
-function getImage(key) {
-  return backend.getImage(key);
-}
-
-// ---- المستخدمون ----
-function getUserByUsername(username) {
-  return state.users.find((u) => u.username === username) || null;
-}
-function getUsersCount() {
-  return state.users.length;
-}
-const STARTING_CREDITS = 1; // رصيد البداية لكل حساب جديد: تذكرة مجانية واحدة
-
-function insertUser({ username, password_hash, is_admin }) {
-  const user = {
-    id: nextId('users'),
-    username,
-    password_hash,
-    is_admin: is_admin ? 1 : 0,
-    credits: STARTING_CREDITS,
-    created_at: new Date().toISOString(),
-  };
-  state.users.push(user);
-  save();
-  return user;
-}
-function getUserById(id) {
-  return state.users.find((u) => u.id === Number(id)) || null;
-}
-// تحديث اسم المستخدم و/أو كلمة المرور. يرجّع المستخدم المحدّث أو null.
-function updateUserFields(id, fields) {
-  const u = getUserById(id);
-  if (!u) return null;
-  if (fields.username) u.username = fields.username;
-  if (fields.password_hash) u.password_hash = fields.password_hash;
-  save();
-  return u;
-}
-// تعديل الرصيد بمقدار delta (سالب = خصم). يرجّع الرصيد الجديد أو null.
-function addCredits(id, delta) {
-  const u = getUserById(id);
-  if (!u) return null;
-  u.credits = Math.max(0, (u.credits || 0) + delta);
-  save();
-  return u.credits;
-}
-// كل المستخدمين (بدون كلمة المرور) — لعرضهم في لوحة التحكم.
+// ---- المستخدمون ---- (قراءة متزامنة من الذاكرة، كتابة ذرية للمستند)
+function getUserByUsername(username) { return state.users.find((u) => u.username === username) || null; }
+function getUserById(id) { return state.users.find((u) => u.id === Number(id)) || null; }
+function getUsersCount() { return state.users.length; }
 function getAllUsers() {
   return state.users
     .slice()
     .sort((a, b) => a.id - b.id)
     .map((u) => ({ id: u.id, username: u.username, isAdmin: !!u.is_admin, credits: u.credits || 0, created_at: u.created_at }));
 }
-function deleteUser(id) {
-  const before = state.users.length;
-  state.users = state.users.filter((u) => u.id !== Number(id));
-  const changed = state.users.length !== before;
-  if (changed) save();
-  return changed;
+async function insertUser({ username, password_hash, is_admin }) {
+  const id = await backend.nextId('users');
+  const user = { id, username, password_hash, is_admin: is_admin ? 1 : 0, credits: STARTING_CREDITS, created_at: new Date().toISOString() };
+  state.users.push(user);
+  await backend.putUser(user);
+  return user;
 }
-function setUserAdmin(id, isAdmin) {
+async function updateUserFields(id, fields) {
+  const u = getUserById(id);
+  if (!u) return null;
+  if (fields.username) u.username = fields.username;
+  if (fields.password_hash) u.password_hash = fields.password_hash;
+  await backend.putUser(u);
+  return u;
+}
+async function addCredits(id, delta) {
+  const u = getUserById(id);
+  if (!u) return null;
+  u.credits = Math.max(0, (u.credits || 0) + delta);
+  await backend.putUser(u);
+  return u.credits;
+}
+async function setUserAdmin(id, isAdmin) {
   const u = getUserById(id);
   if (!u) return null;
   u.is_admin = isAdmin ? 1 : 0;
-  save();
+  await backend.putUser(u);
   return u;
 }
-function setUserCredits(id, credits) {
+async function setUserCredits(id, credits) {
   const u = getUserById(id);
   if (!u) return null;
   const n = Math.floor(Number(credits));
   u.credits = Number.isFinite(n) && n >= 0 ? n : 0;
-  save();
+  await backend.putUser(u);
   return u;
+}
+async function deleteUser(id) {
+  const rid = Number(id);
+  const before = state.users.length;
+  state.users = state.users.filter((u) => u.id !== rid);
+  const changed = state.users.length !== before;
+  if (changed) await backend.delUser(rid);
+  return changed;
 }
 
 // ---- الصور المرتبطة بجولة ----
-// كل صورة عندها "position" (رقم اللاعب اللي يستلمها): 1 = أول صورة ترفع، 2 = الثانية، وهكذا.
-// هذا يحدد تلقائيًا أي لاعب يشوف أي صورة (rooms.js يستخدم ترتيب المصفوفة مباشرة).
 function getRoundImages(roundId) {
   return state.round_images
     .filter((i) => i.round_id === Number(roundId))
     .sort((a, b) => (a.position || a.id) - (b.position || b.id))
     .map((i, idx) => ({ id: i.id, url: i.url, playerIndex: i.position || idx + 1 }));
 }
-function insertRoundImage(roundId, { filename, url }) {
+async function insertRoundImage(roundId, { filename, url }) {
   const rid = Number(roundId);
   const count = state.round_images.filter((i) => i.round_id === rid).length;
-  const img = {
-    id: nextId('round_images'),
-    round_id: rid,
-    filename,
-    url,
-    position: count + 1,
-    created_at: new Date().toISOString(),
-  };
+  const id = await backend.nextId('round_images');
+  const img = { id, round_id: rid, filename, url, position: count + 1, created_at: new Date().toISOString() };
   state.round_images.push(img);
-  save();
+  await backend.putImageMeta(img);
   return img;
 }
-// نقل صورة لمكان لاعب معيّن — يعيد ترتيب باقي الصور تلقائيًا (مثل سحب/إفلات).
-function setImagePosition(roundId, imageId, newPosition) {
+async function setImagePosition(roundId, imageId, newPosition) {
   const rid = Number(roundId);
-  const list = state.round_images
-    .filter((i) => i.round_id === rid)
-    .sort((a, b) => (a.position || a.id) - (b.position || b.id));
+  const list = state.round_images.filter((i) => i.round_id === rid).sort((a, b) => (a.position || a.id) - (b.position || b.id));
   const target = list.find((i) => i.id === Number(imageId));
   if (!target) return;
   const rest = list.filter((i) => i.id !== target.id);
@@ -292,49 +252,35 @@ function setImagePosition(roundId, imageId, newPosition) {
   if (!Number.isFinite(pos) || pos < 1) pos = 1;
   if (pos > rest.length + 1) pos = rest.length + 1;
   rest.splice(pos - 1, 0, target);
-  rest.forEach((img, i) => {
-    img.position = i + 1;
-  });
-  save();
+  rest.forEach((img, i) => { img.position = i + 1; });
+  await backend.putImagesMeta(rest);
 }
 
 // ---- الجولات ----
 function getRounds() {
-  return state.rounds
-    .slice()
-    .sort((a, b) => a.id - b.id)
-    .map((r) => ({ ...r, images: getRoundImages(r.id) }));
+  return state.rounds.slice().sort((a, b) => a.id - b.id).map((r) => ({ ...r, images: getRoundImages(r.id) }));
 }
 function getRound(id) {
   const r = state.rounds.find((x) => x.id === Number(id));
   if (!r) return null;
   return { ...r, images: getRoundImages(r.id) };
 }
-function getRoundsCount() {
-  return state.rounds.length;
-}
-function insertRound({ hint, answers, hintPlayerIndex }) {
+function getRoundsCount() { return state.rounds.length; }
+async function insertRound({ hint, answers, hintPlayerIndex }) {
   const idx = Number(hintPlayerIndex);
-  const round = {
-    id: nextId('rounds'),
-    hint,
-    answers,
-    hintPlayerIndex: Number.isFinite(idx) && idx > 0 ? Math.floor(idx) : 1,
-    created_at: new Date().toISOString(),
-  };
+  const id = await backend.nextId('rounds');
+  const round = { id, hint, answers, hintPlayerIndex: Number.isFinite(idx) && idx > 0 ? Math.floor(idx) : 1, created_at: new Date().toISOString() };
   state.rounds.push(round);
-  save();
+  await backend.putRound(round);
   return { ...round, images: [] };
 }
-function deleteRound(id) {
+async function deleteRound(id) {
   const rid = Number(id);
   state.rounds = state.rounds.filter((r) => r.id !== rid);
   state.round_images = state.round_images.filter((i) => i.round_id !== rid);
-  save();
-  // حذف صور الجولة من التخزين (في الخلفية — لا يعطّل الرد)
-  if (backend && backend.deleteImages) {
-    backend.deleteImages('rounds/' + rid + '/').catch(() => {});
-  }
+  await backend.delRound(rid);
+  await backend.delImagesMetaForRound(rid);
+  if (backend.delImagesFiles) backend.delImagesFiles('rounds/' + rid + '/').catch(() => {});
 }
 
 module.exports = {
@@ -343,12 +289,12 @@ module.exports = {
   getImage,
   getUserByUsername,
   getUserById,
+  getAllUsers,
   updateUserFields,
   addCredits,
-  getAllUsers,
-  deleteUser,
   setUserAdmin,
   setUserCredits,
+  deleteUser,
   getUsersCount,
   insertUser,
   getRounds,

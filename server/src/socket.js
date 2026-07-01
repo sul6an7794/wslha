@@ -11,7 +11,7 @@ function registerSocket(io) {
     socket.data.user = payload || null;
     socket.data.name = (payload && payload.username) || null;
 
-    socket.on('createRoom', (data, cb) => {
+    socket.on('createRoom', async (data, cb) => {
       try {
         const u = socket.data.user;
         // المستخدم المسجّل يدفع كريدت لكل لعبة؛ الضيف (غير مسجّل) يلعب محليًا بدون خصم.
@@ -24,7 +24,7 @@ function registerSocket(io) {
         }
         const room = roomsMgr.createRoom(io, socket, data || {});
         let credits;
-        if (u && u.id) credits = db.addCredits(u.id, -ROOM_COST);
+        if (u && u.id) credits = await db.addCredits(u.id, -ROOM_COST);
         cb && cb({ ok: true, roomCode: room.code, teams: roomsMgr.teamSummary(room), credits });
       } catch (e) {
         cb && cb({ ok: false, error: 'تعذّر إنشاء الغرفة' });
