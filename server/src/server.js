@@ -21,7 +21,7 @@ const CSP = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://cdn.socket.io https://cdnjs.cloudflare.com",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://cdn.socket.io https://cdnjs.cloudflare.com https://unpkg.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com data:",
   "img-src 'self' data: blob: https:",

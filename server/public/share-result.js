@@ -35,7 +35,12 @@
   btn.textContent = 'شارك النتيجة كصورة';
   document.body.appendChild(btn);
 
-  function resultsEl() { return document.querySelector('[data-screen-label="Results"]'); }
+  // شاشة النتائج فقط، وبشرط أن تكون ظاهرة فعلًا (لها أبعاد) — تفاديًا لظهور الزر
+  // على قالب خام غير مُفعّل.
+  function resultsEl() {
+    var el = document.querySelector('[data-screen-label="Results"]');
+    return el && el.getClientRects().length > 0 ? el : null;
+  }
 
   // إظهار/إخفاء الزر حسب الشاشة الحالية
   setInterval(function () {
