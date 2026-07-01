@@ -142,6 +142,28 @@ function makeMongoBackend(uri) {
       const esc = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       await ImageBlob.deleteMany({ _id: new RegExp('^' + esc) });
     },
+    // استرجاع يدوي من النسخة القديمة (appstate) — upsert آمن (لا يكرّر)، ويرجّع تقريرًا.
+    async recoverFromLegacy() {
+      const legacy = await Legacy.findById('state').lean();
+      if (!legacy || !legacy.json) return { legacyFound: false, users: 0, rounds: 0, images: 0 };
+      const s = JSON.parse(legacy.json);
+      const report = {
+        legacyFound: true,
+        users: (s.users || []).length,
+        rounds: (s.rounds || []).length,
+        images: (s.round_images || []).length,
+      };
+      for (const u of s.users || []) await User.updateOne({ _id: u.id }, { $set: u }, { upsert: true });
+      for (const r of s.rounds || []) await Round.updateOne({ _id: r.id }, { $set: r }, { upsert: true });
+      for (const i of s.round_images || []) await ImageMeta.updateOne({ _id: i.id }, { $set: i }, { upsert: true });
+      const maxId = (arr) => arr.reduce((m, x) => Math.max(m, x.id || 0), 0);
+      for (const [k, arr] of [['users', s.users || []], ['rounds', s.rounds || []], ['round_images', s.round_images || []]]) {
+        const cur = await Counter.findById(k).lean();
+        const want = Math.max(maxId(arr), (s.nextIds || {})[k] ? (s.nextIds[k] - 1) : 0, cur ? cur.seq : 0);
+        await Counter.updateOne({ _id: k }, { $set: { seq: want } }, { upsert: true });
+      }
+      return report;
+    },
   };
 }
 
@@ -164,6 +186,17 @@ async function init() {
   for (const u of state.users) {
     if (typeof u.credits !== 'number') { u.credits = STARTING_CREDITS; await backend.putUser(u).catch(() => {}); }
   }
+}
+
+// ---- استرجاع البيانات القديمة من النسخة الاحتياطية (appstate) ----
+async function recoverFromLegacy() {
+  if (!backend || !backend.recoverFromLegacy) return { legacyFound: false, note: 'وضع الملف المحلي — لا نسخة قديمة' };
+  const report = await backend.recoverFromLegacy();
+  const loaded = await backend.loadAll();
+  if (loaded) state = loaded; // تحديث الذاكرة بالبيانات المستعادة
+  report.nowUsers = state.users.length;
+  report.nowRounds = state.rounds.length;
+  return report;
 }
 
 // ---- تخزين/جلب الصور ----
@@ -285,6 +318,7 @@ async function deleteRound(id) {
 
 module.exports = {
   init,
+  recoverFromLegacy,
   saveImage,
   getImage,
   getUserByUsername,
