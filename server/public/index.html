@@ -9,7 +9,9 @@
 <x-dc>
 <helmet>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<link rel="preload" href="/fonts/thmanyahsans-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/thmanyahsans-Bold.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/thmanyahserifdisplay-Black.woff2" as="font" type="font/woff2" crossorigin>
 <style>
   @font-face{font-family:'Thmanyah Sans';src:url('/fonts/thmanyahsans-Regular.woff2') format('woff2');font-weight:400;font-display:swap;}
   @font-face{font-family:'Thmanyah Sans';src:url('/fonts/thmanyahsans-Medium.woff2') format('woff2');font-weight:500;font-display:swap;}
@@ -517,7 +519,7 @@
 
 <!-- GAME -->
 <sc-if value="{{ isGame }}" hint-placeholder-val="{{ false }}">
-<div style="position:relative; z-index:1; max-width:900px; margin:0 auto; padding:96px 24px 64px; animation:tqIn .4s ease;" data-screen-label="Game">
+<div style="position:relative; z-index:1; max-width:900px; margin:0 auto; padding:60px 24px 64px; animation:tqIn .4s ease;" data-screen-label="Game">
   <div style="display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:10px; margin-bottom:24px;">
     <div style="display:flex; justify-content:flex-start;">
       <div style="font-size:12px; font-weight:700; color:#a9a7cc; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); padding:7px 14px; border-radius:30px;">الجولة {{ roundNumber }} من {{ roundTotal }}</div>
@@ -654,6 +656,10 @@ class Component extends DCLogic {
     if (token && user) {
       this.setState({ token, user, credits: (user.credits != null ? user.credits : this.state.credits) }, () => { this.connectSocket(); this.refreshMe(); });
     }
+    try {
+      const room = new URLSearchParams(window.location.search).get('room');
+      if (room) this.setState({ joinCode: room }, () => this.go('join'));
+    } catch (e) {}
   }
 
   _saveSession(token, user) {
@@ -1287,5 +1293,5 @@ class Component extends DCLogic {
   }
 }
 </script>
-<script src="/password-eye.js" defer></script><script src="/enter-submit.js" defer></script><script src="/share-result.js" defer></script><script src="/admin-users.js" defer></script></body>
+<script src="/password-eye.js" defer></script><script src="/enter-submit.js" defer></script><script src="/share-result.js" defer></script><script src="/admin-users.js" defer></script><script src="/qr-real.js" defer></script></body>
 </html>
