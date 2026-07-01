@@ -24,10 +24,7 @@
 
   var style = document.createElement('style');
   style.textContent =
-    '#wau-open{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;max-width:760px;margin:0 auto 18px;' +
-    'background:linear-gradient(135deg,#818cf8,#ec4899);color:#fff;border:none;border-radius:14px;padding:13px;' +
-    'font-family:Tajawal,system-ui,sans-serif;font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 12px 30px rgba(236,72,153,.35)}' +
-    '#wau-open:hover{filter:brightness(1.08)}' +
+    '.wau-hint{font-size:11px;color:#38bdf8;margin-top:6px;font-weight:700}' +
     '#wau-ov{position:fixed;inset:0;z-index:99999;background:rgba(10,8,24,.7);display:none;align-items:flex-start;justify-content:center;' +
     'padding:40px 14px;overflow:auto;direction:rtl}' +
     '#wau-ov.on{display:flex}' +
@@ -102,15 +99,28 @@
   function open() { ov.classList.add('on'); load(); }
   function close() { ov.classList.remove('on'); }
 
-  // زر الفتح داخل شاشة الأدمن (يُعاد تركيبه لو مُسح)
-  function ensureButton() {
+  // نخلي بطاقة الإحصاء «مستخدمون» نفسها قابلة للضغط لفتح القائمة (يُعاد ربطها بعد إعادة الرسم).
+  function ensureTrigger() {
     var admin = document.querySelector('[data-screen-label="Admin"]');
-    if (!admin || $('wau-open')) return;
-    var btn = document.createElement('button');
-    btn.id = 'wau-open';
-    btn.innerHTML = '<span>👥</span> قائمة المستخدمين';
-    btn.addEventListener('click', open);
-    admin.insertBefore(btn, admin.firstChild);
+    if (!admin) return;
+    var divs = admin.querySelectorAll('div');
+    for (var i = 0; i < divs.length; i++) {
+      var el = divs[i];
+      if (el.children.length === 0 && el.textContent.trim() === 'مستخدمون') {
+        var card = el.parentElement;
+        if (card && !card.getAttribute('data-wau')) {
+          card.setAttribute('data-wau', '1');
+          card.style.cursor = 'pointer';
+          card.title = 'اضغط لعرض المستخدمين وإدارتهم';
+          card.addEventListener('click', open);
+          var hint = document.createElement('div');
+          hint.className = 'wau-hint';
+          hint.textContent = '↗ اضغط للإدارة';
+          card.appendChild(hint);
+        }
+        break;
+      }
+    }
   }
 
   // نداءات الأزرار داخل النافذة (event delegation)
@@ -137,6 +147,6 @@
     }
   });
 
-  setInterval(ensureButton, 800);
-  ensureButton();
+  setInterval(ensureTrigger, 800);
+  ensureTrigger();
 })();
