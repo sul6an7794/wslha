@@ -27,6 +27,8 @@
   @keyframes tqIn { from { transform:translateY(14px); } to { transform:translateY(0); } }
   @keyframes lockShake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-7px)} 40%,80%{transform:translateX(7px)} }
   @keyframes tqPulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  @keyframes cdPop { 0%{transform:scale(.35);opacity:0} 22%{transform:scale(1.18);opacity:1} 62%{transform:scale(1)} 100%{transform:scale(.7);opacity:0} }
+  @keyframes cdRing { from{transform:rotate(0)} to{transform:rotate(360deg)} }
   @media (max-width:760px){ .wnav{ padding-top:20px !important; } .whero{ padding-top:14px !important; } }
 </style>
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
@@ -65,19 +67,19 @@
   <sc-if value="{{ isDesktop }}" hint-placeholder-val="{{ true }}">
   <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; position:absolute; left:50%; transform:translateX(-50%);">
     <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="3">
-      <button onClick="{{ n.go }}" style="font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:15px; padding:8px 16px; border-radius:30px; cursor:pointer; border:none; background:{{ n.bg }}; color:{{ n.col }};" style-hover="background:rgba(255,255,255,.1); color:#fff;">{{ n.label }}</button>
+      <button onClick="{{ n.go }}" style="font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:15px; padding:8px 16px; border-radius:30px; cursor:pointer; border:none; white-space:nowrap; background:{{ n.bg }}; color:{{ n.col }};" style-hover="background:rgba(255,255,255,.1); color:#fff;">{{ n.label }}</button>
     </sc-for>
   </div>
   </sc-if>
   <!-- النهاية: الدخول / حساب المستخدم + قائمة الجوال -->
   <div style="display:flex; align-items:center; gap:10px; position:relative;">
     <sc-if value="{{ isLoggedOut }}" hint-placeholder-val="{{ true }}">
-      <button onClick="{{ goLogin }}" style="font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:15px; color:#c0bee0; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); padding:10px 22px; border-radius:30px; cursor:pointer;" style-hover="color:#fff; background:rgba(255,255,255,.1);">تسجيل الدخول</button>
+      <button onClick="{{ goLogin }}" style="font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:15px; color:#c0bee0; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); padding:10px 22px; border-radius:30px; cursor:pointer; white-space:nowrap;" style-hover="color:#fff; background:rgba(255,255,255,.1);">تسجيل الدخول</button>
     </sc-if>
     <sc-if value="{{ isLoggedIn }}" hint-placeholder-val="{{ false }}">
       <button onClick="{{ toggleMenu }}" style="display:flex; align-items:center; gap:9px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); padding:5px 13px 5px 7px; border-radius:30px; cursor:pointer; font-family:'Thmanyah Sans',sans-serif;" style-hover="background:rgba(255,255,255,.1);">
-        <span style="width:18px; height:18px; border-radius:50%; background:linear-gradient(135deg,#818cf8,#ec4899); display:flex; align-items:center; justify-content:center; font-weight:900; font-size:10px; color:#fff;">{{ userInitial }}</span>
-        <span style="font-size:12px; font-weight:700; color:#f1f0ff;">{{ user.username }}</span>
+        <span style="width:24px; height:24px; border-radius:50%; background:linear-gradient(135deg,#818cf8,#ec4899); display:flex; align-items:center; justify-content:center; font-weight:900; font-size:11px; color:#fff; flex-shrink:0;">{{ userInitial }}</span>
+        <span style="font-size:13px; font-weight:700; color:#f1f0ff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:150px;">{{ user.username }}</span>
         <span style="color:#a9a7cc; display:flex;">{{ iconChevron }}</span>
       </button>
       <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
@@ -143,8 +145,8 @@
     <p style="font-size:clamp(16px,3vw,24px); font-weight:800; color:#f1f0ff; margin:0 0 20px;">اشرحها صح… ولا تضيعهم</p>
     <p style="font-size:16px; color:#a9a7cc; line-height:1.8; margin:0 auto 34px; max-width:540px;">ثلاث لاعبين، ثلاث صور مختلفة، نقاش واحد يوصلكم للإجابة،<br>غلطة وحدة توقفكم 15 ثانية… فمافي مجال للهبد.</p>
     <div style="display:flex; gap:14px; flex-wrap:wrap; justify-content:center;">
-      <button onClick="{{ goCreate }}" style="display:flex; align-items:center; gap:8px; font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:18px; color:#fff; background:linear-gradient(135deg,#818cf8,#ec4899); border:none; padding:16px 34px; border-radius:16px; cursor:pointer; box-shadow:0 16px 40px rgba(236,72,153,.45);" style-hover="filter:brightness(1.08);">{{ iconPlus }} ابدأ التحدي</button>
-      <button onClick="{{ goJoin }}" style="display:flex; align-items:center; gap:8px; font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:18px; color:#f1f0ff; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.16); padding:16px 34px; border-radius:16px; cursor:pointer;" style-hover="background:rgba(255,255,255,.1);">{{ iconEnter }} الانضمام إلى غرفة</button>
+      <button onClick="{{ goCreate }}" style="display:flex; align-items:center; gap:8px; font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:18px; color:#fff; background:linear-gradient(135deg,#818cf8,#ec4899); border:none; padding:16px 34px; border-radius:16px; cursor:pointer; white-space:nowrap; box-shadow:0 16px 40px rgba(236,72,153,.45);" style-hover="filter:brightness(1.08);">{{ iconPlus }} ابدأ التحدي</button>
+      <button onClick="{{ goJoin }}" style="display:flex; align-items:center; gap:8px; font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:18px; color:#f1f0ff; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.16); padding:16px 34px; border-radius:16px; cursor:pointer; white-space:nowrap;" style-hover="background:rgba(255,255,255,.1);">{{ iconEnter }} الانضمام إلى غرفة</button>
     </div>
   </div>
 
@@ -443,7 +445,7 @@
       <button onClick="{{ startGame }}" style="width:100%; font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:17px; color:#fff; background:linear-gradient(135deg,#818cf8,#ec4899); border:none; padding:16px; border-radius:16px; cursor:pointer; box-shadow:0 16px 40px rgba(236,72,153,.5);" style-hover="filter:brightness(1.08);">فريقك اكتمل — يلا نبدأ ←</button>
     </sc-if>
     <sc-if value="{{ showMemberReady }}" hint-placeholder-val="{{ false }}">
-      <div style="text-align:center; font-size:15px; font-weight:800; color:#34d399; padding:16px; background:rgba(52,211,153,.08); border:1px solid rgba(52,211,153,.2); border-radius:14px;">اكتمل الفريق (3/3) — يبدأ الآن…</div>
+      <div style="text-align:center; font-size:15px; font-weight:800; color:#34d399; padding:16px; background:rgba(52,211,153,.08); border:1px solid rgba(52,211,153,.2); border-radius:14px;">اكتمل الفريق — بانتظار القائد ليبدأ اللعبة</div>
     </sc-if>
     <button onClick="{{ goHome }}" style="width:100%; margin-top:12px; font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:15px; color:#a9a7cc; background:none; border:none; padding:10px; cursor:pointer;" style-hover="color:#fff;">← مغادرة الغرفة</button>
   </div>
@@ -575,6 +577,19 @@
 </div>
 </sc-if>
 
+<!-- COUNTDOWN قبل بدء اللعبة -->
+<sc-if value="{{ showCountdown }}" hint-placeholder-val="{{ false }}">
+<div style="position:fixed; inset:0; z-index:300; background:rgba(5,4,16,.94); backdrop-filter:blur(14px); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:28px; animation:tqIn .25s ease;">
+  <div style="font-size:16px; font-weight:800; color:#c4b5fd; letter-spacing:3px;">استعدّوا…</div>
+  <div style="position:relative; width:220px; height:220px; display:flex; align-items:center; justify-content:center;">
+    <div style="position:absolute; inset:0; border-radius:50%; border:3px solid rgba(255,255,255,.08);"></div>
+    <div style="position:absolute; inset:0; border-radius:50%; border:3px solid transparent; border-top-color:#818cf8; border-right-color:#ec4899; animation:cdRing 1s linear infinite;"></div>
+    {{ countdownEl }}
+  </div>
+  <div style="font-size:18px; font-weight:800; color:#f1f0ff;">{{ lobbyTeamName }}</div>
+</div>
+</sc-if>
+
 <!-- RESULTS -->
 <sc-if value="{{ isResults }}" hint-placeholder-val="{{ false }}">
 <div style="position:relative; z-index:1; max-width:640px; margin:0 auto; padding:56px 24px 72px; animation:tqIn .4s ease; text-align:center;" data-screen-label="Results">
@@ -626,7 +641,7 @@ class Component extends DCLogic {
     token: null, connected: false, serverImage: null, lobbyPlayers: [], statusMsg: '',
     // لوحة التحكم
     adminRounds: [], adminStats: null, newHint: '', newAnswers: '', newQuestion: '', adminMsg: '',
-    serverTeams: [], myTeamIndex: null, namingTeam: null, teamNameInput: '', startRequested: false, shareCopied: false, zoomOpen: false,
+    serverTeams: [], myTeamIndex: null, namingTeam: null, teamNameInput: '', startRequested: false, shareCopied: false, zoomOpen: false, countdown: 0,
     // الحساب: القوائم والتذاكر وتعديل الملف
     menuOpen: false, creditOpen: false, editMode: false, editSection: null,
     profileName: '', curPass: '', newPass: '', profileMsg: '', profileMsgType: '',
@@ -761,13 +776,20 @@ class Component extends DCLogic {
     t.count = t.players.length; t.full = t.count >= (t.max || 3);
     this.setState({ serverTeams: teams, myTeamIndex: i, role: asCaptain ? 'captain' : 'member', namingTeam: null }, () => this.go('lobby'));
   }
-  maybeAutoStart() {
-    if (this.state.role !== 'captain' || this.state.startRequested) return;
-    const t = (this.state.serverTeams || [])[this.state.myTeamIndex];
-    if (t && t.full) {
-      this.setState({ startRequested: true });
-      if (this.serverConnected) this._socket.emit('startGame', {}, (res) => { if (!(res && res.ok)) this.setState({ startRequested: false }); });
-    }
+  // البدء صار يدويّاً: القائد يضغط زر "يلا نبدأ" في اللوبي — لا بدء تلقائي عند اكتمال الفريق.
+  maybeAutoStart() { /* no-op */ }
+
+  startCountdown(onDone) {
+    if (this._cd) { clearInterval(this._cd); this._cd = null; }
+    this._cd = setInterval(() => {
+      this.setState(s => ({ countdown: s.countdown - 1 }), () => {
+        if (this.state.countdown <= 0) {
+          clearInterval(this._cd); this._cd = null;
+          this.setState({ countdown: 0 });
+          if (typeof onDone === 'function') onDone();
+        }
+      });
+    }, 1000);
   }
   setNewQuestion(e) { this.setState({ newQuestion: e.target.value }); }
 
@@ -794,7 +816,7 @@ class Component extends DCLogic {
     s.on('connect', () => this.setState({ connected: true }));
     s.on('disconnect', () => this.setState({ connected: false }));
     s.on('lobby', (p) => this.setState({ serverTeams: p.teams || [], roomCode: p.roomCode || this.state.roomCode }, () => this.maybeAutoStart()));
-    s.on('gameStarted', (st) => { this.stopTimer(); this.setState({ page: 'game', roundIndex: st.roundIndex, gameScore: st.score, elapsed: st.elapsed, hintShown: false, hintText: '', wrongCount: 0 }); });
+    s.on('gameStarted', (st) => { this.stopTimer(); this.setState({ page: 'game', roundIndex: st.roundIndex, gameScore: st.score, elapsed: st.elapsed, hintShown: false, hintText: '', wrongCount: 0, countdown: 3 }, () => this.startCountdown()); });
     s.on('state', (st) => this.setState({ roundIndex: st.roundIndex, gameScore: st.score, elapsed: st.elapsed, locked: st.lockedSeconds }));
     s.on('yourImage', (im) => this.setState({ serverImage: im.src }));
     s.on('correct', () => this.setState({ answer: '', showHint: false }));
@@ -971,7 +993,10 @@ class Component extends DCLogic {
   startGame() {
     const t = (this.state.serverTeams || [])[this.state.myTeamIndex];
     if (this.serverConnected) { this._socket.emit('startGame', {}, (res) => { if (!(res && res.ok)) this.setState({ statusMsg: (res && res.error) || 'الفريق غير مكتمل — يحتاج 3 لاعبين' }); }); }
-    else if (!t || t.full) this.go('game');
+    else if (!t || t.full) {
+      this.stopTimer(); this.stopPenalty();
+      this.setState({ page: 'game', created: false, menuOpen: false, mobileNavOpen: false, elapsed: 0, roundIndex: 0, answer: '', locked: 0, showHint: false, gameScore: 0, countdown: 3 }, () => this.startCountdown(() => this.startTimer()));
+    }
     else this.setState({ statusMsg: 'الفريق غير مكتمل — يحتاج 3 لاعبين' });
   }
 
@@ -1043,7 +1068,7 @@ class Component extends DCLogic {
       ...paths.map((p, k) => I.createElement(p[0], { key: k, ...p[1] })));
   }
 
-  componentWillUnmount() { this.stopTimer(); this.stopPenalty(); if (this._onResize && typeof window !== 'undefined') window.removeEventListener('resize', this._onResize); }
+  componentWillUnmount() { this.stopTimer(); this.stopPenalty(); if (this._cd) { clearInterval(this._cd); this._cd = null; } if (this._onResize && typeof window !== 'undefined') window.removeEventListener('resize', this._onResize); }
 
   renderVals() {
     const { page, elapsed, roundIndex } = this.state;
@@ -1133,6 +1158,11 @@ class Component extends DCLogic {
       isHome: page === 'home', isCreate: page === 'create', isHow: page === 'how', isAbout: page === 'about',
       isLogin: page === 'login', isJoin: page === 'join', isGame: page === 'game', isResults: page === 'results', notGame: page !== 'game',
       isLobby: page === 'lobby', isAdmin: page === 'admin', isTeams: page === 'teams',
+      showCountdown: this.state.countdown > 0,
+      countdownEl: React.createElement('div', {
+        key: this.state.countdown,
+        style: { fontSize: '128px', fontWeight: 900, lineHeight: 1, fontFamily: "'Thmanyah Serif Display','Thmanyah Sans',serif", background: 'linear-gradient(135deg,#818cf8,#ec4899)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent', color: 'transparent', animation: 'cdPop 1s cubic-bezier(.2,.8,.2,1) both' }
+      }, String(this.state.countdown).replace(/[0-9]/g, d => '٠١٢٣٤٥٦٧٨٩'[d])),
       navItems,
       // اختيار الفرق
       goTeams: () => this.goTeams(),
