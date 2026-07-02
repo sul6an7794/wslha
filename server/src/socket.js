@@ -14,8 +14,12 @@ function registerSocket(io) {
     socket.on('createRoom', async (data, cb) => {
       try {
         const u = socket.data.user;
-        // المستخدم المسجّل يدفع كريدت لكل لعبة؛ الضيف (غير مسجّل) يلعب محليًا بدون خصم.
-        if (u && u.id) {
+        // إنشاء اللعبة يتطلب تسجيل دخول (لا يُسمح للضيوف).
+        if (!u || !u.id) {
+          cb && cb({ ok: false, error: 'سجّل دخول لإنشاء لعبة', needLogin: true });
+          return;
+        }
+        {
           const acct = db.getUserById(u.id);
           if (acct && (acct.credits || 0) < ROOM_COST) {
             cb && cb({ ok: false, error: 'رصيدك لا يكفي لإنشاء لعبة جديدة', credits: acct.credits || 0 });
@@ -38,6 +42,9 @@ function registerSocket(io) {
         cb && cb({ ok: false, error: 'لم يتم العثور على الغرفة' });
         return;
       }
+      // نضم اللاعب لقناة الغرفة حتى يستقبل تحديثات الفرق اللحظية (lobby) قبل اختيار فريقه.
+      socket.join(room.code);
+      socket.data.roomCode = room.code;
       cb && cb({ ok: true, roomCode: room.code, teams: roomsMgr.teamSummary(room) });
     });
 

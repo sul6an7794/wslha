@@ -939,6 +939,7 @@ class Component extends DCLogic {
   handleKeyDown(e) { if (e.key === 'Enter') this.submitAnswer(); }
 
   createRoom() {
+    if (!this.state.user) { this.go('login'); return; }
     this.setState({ loading: true, offline: false, statusMsg: '' });
     const s = this.connectSocket();
     if (s) {
