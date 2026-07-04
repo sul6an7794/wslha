@@ -211,6 +211,9 @@
       <h1 style="font-size:28px; font-weight:900; margin:0 0 8px;">الانضمام إلى غرفة</h1>
       <p style="font-size:15px; color:#a9a7cc; margin:0;">أدخل رقم الغرفة المكوّن من ٦ أرقام</p>
     </div>
+    <sc-if value="{{ hasStatus }}" hint-placeholder-val="{{ false }}">
+      <div style="text-align:center; font-size:14px; font-weight:700; color:#fbbf24; background:rgba(251,191,36,.1); border:1px solid rgba(251,191,36,.28); border-radius:12px; padding:11px; margin-bottom:22px;">{{ statusMsg }}</div>
+    </sc-if>
     <label style="display:block; font-size:14px; font-weight:700; margin-bottom:8px; color:#d8d6ee;">رقم الغرفة</label>
     <input value="{{ joinCode }}" onInput="{{ setJoinCode }}" placeholder="٠٠٠٠٠٠" style="width:100%; font-family:'Thmanyah Sans',sans-serif; font-size:24px; font-weight:900; color:#f1f0ff; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.14); border-radius:16px; padding:16px; margin-bottom:18px; outline:none; letter-spacing:8px; text-align:center;" style-focus="border-color:rgba(129,140,248,.7);">
     <sc-if value="{{ isLoggedOut }}" hint-placeholder-val="{{ true }}">
@@ -1049,6 +1052,7 @@ class Component extends DCLogic {
   async doJoin() {
     const code = (this.state.joinCode || '').trim();
     if (!code) return;
+    this.setState({ statusMsg: '' });
     const pname = (this.state.joinName || '').trim() || (this.state.user && this.state.user.username);
     const s = this.connectSocket();
     if (s) {
