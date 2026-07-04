@@ -40,6 +40,12 @@
   @keyframes tqPulse { 0%,100%{opacity:1} 50%{opacity:.4} }
   @keyframes cdPop { 0%{transform:scale(.35);opacity:0} 22%{transform:scale(1.18);opacity:1} 62%{transform:scale(1)} 100%{transform:scale(.7);opacity:0} }
   @keyframes cdRing { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+  @keyframes featIn { from{opacity:0; transform:translateY(16px);} to{opacity:1; transform:translateY(0);} }
+  @keyframes shimmer { 0%{background-position:-200% 0;} 100%{background-position:200% 0;} }
+  @keyframes rippleFx { to { transform:scale(2.6); opacity:0; } }
+  .wsl-ripple-host { position:relative; overflow:hidden; }
+  .wsl-ripple { position:absolute; border-radius:50%; background:rgba(255,255,255,.45); transform:scale(0); pointer-events:none; animation:rippleFx .55s ease-out; }
+  .wsl-shimmer { background:linear-gradient(90deg, rgba(255,255,255,.06) 25%, rgba(255,255,255,.14) 50%, rgba(255,255,255,.06) 75%); background-size:200% 100%; animation:shimmer 1.4s ease-in-out infinite; }
   @media (max-width:760px){ .wnav{ padding-top:20px !important; } .whero{ padding-top:14px !important; } }
 </style>
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
@@ -167,32 +173,32 @@
       <h2 style="font-size:clamp(26px,4vw,40px); font-weight:900; margin:0;">لماذا وصّلها؟</h2>
     </div>
     <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:20px;">
-      <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:20px; padding:28px;">
+      <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:20px; padding:28px; animation:featIn .55s ease both; animation-delay:0ms;">
         <div style="width:50px; height:50px; background:rgba(129,140,248,.15); border-radius:14px; display:flex; align-items:center; justify-content:center; color:#818cf8; margin-bottom:16px;">{{ iconUsers }}</div>
         <h3 style="font-size:18px; font-weight:800; margin:0 0 8px;">فريق واحد</h3>
         <p style="font-size:14px; color:#a9a7cc; margin:0; line-height:1.6;">٣ لاعبين بروح وحدة — تفاهمكم هو سرّ الفوز.</p>
       </div>
-      <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:20px; padding:28px;">
+      <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:20px; padding:28px; animation:featIn .55s ease both; animation-delay:80ms;">
         <div style="width:50px; height:50px; background:rgba(236,72,153,.15); border-radius:14px; display:flex; align-items:center; justify-content:center; color:#ec4899; margin-bottom:16px;">{{ iconClock }}</div>
         <h3 style="font-size:18px; font-weight:800; margin:0 0 8px;">السرعة تكسب</h3>
         <p style="font-size:14px; color:#a9a7cc; margin:0; line-height:1.6;">الساعة شغّالة من أول ثانية — الأسرع يطلع فوق.</p>
       </div>
-      <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:20px; padding:28px;">
+      <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:20px; padding:28px; animation:featIn .55s ease both; animation-delay:160ms;">
         <div style="width:50px; height:50px; background:rgba(56,189,248,.15); border-radius:14px; display:flex; align-items:center; justify-content:center; color:#38bdf8; margin-bottom:16px;">{{ iconImg }}</div>
         <h3 style="font-size:18px; font-weight:800; margin:0 0 8px;">صورتك سرّ</h3>
         <p style="font-size:14px; color:#a9a7cc; margin:0; line-height:1.6;">كل واحد قدامه صورة غير — وسلاحك الوحيد كلامك.</p>
       </div>
-      <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:20px; padding:28px;">
+      <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:20px; padding:28px; animation:featIn .55s ease both; animation-delay:240ms;">
         <div style="width:50px; height:50px; background:rgba(129,140,248,.15); border-radius:14px; display:flex; align-items:center; justify-content:center; color:#818cf8; margin-bottom:16px;">{{ iconLock }}</div>
         <h3 style="font-size:18px; font-weight:800; margin:0 0 8px;">غرفتك الخاصة</h3>
         <p style="font-size:14px; color:#a9a7cc; margin:0; line-height:1.6;">سوِّ غرفة وجمّع فريقك برقم من ٦ أرقام بس.</p>
       </div>
-      <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:20px; padding:28px;">
+      <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:20px; padding:28px; animation:featIn .55s ease both; animation-delay:320ms;">
         <div style="width:50px; height:50px; background:rgba(236,72,153,.15); border-radius:14px; display:flex; align-items:center; justify-content:center; color:#ec4899; margin-bottom:16px;">{{ iconShare }}</div>
         <h3 style="font-size:18px; font-weight:800; margin:0 0 8px;">جمّعهم بثانية</h3>
         <p style="font-size:14px; color:#a9a7cc; margin:0; line-height:1.6;">شارك الـQR أو الرابط، وخلّهم يلحقونك.</p>
       </div>
-      <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:20px; padding:28px;">
+      <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:20px; padding:28px; animation:featIn .55s ease both; animation-delay:400ms;">
         <div style="width:50px; height:50px; background:rgba(251,191,36,.15); border-radius:14px; display:flex; align-items:center; justify-content:center; color:#fbbf24; margin-bottom:16px;">{{ iconTrophy }}</div>
         <h3 style="font-size:18px; font-weight:800; margin:0 0 8px;">مين البطل؟</h3>
         <p style="font-size:14px; color:#a9a7cc; margin:0; line-height:1.6;">ترتيب لحظي للفرق، والفايز يتتوّج بعد آخر جولة.</p>
@@ -482,12 +488,22 @@
     <div style="background:rgba(251,191,36,.12); border:1px solid rgba(251,191,36,.3); color:#fbbf24; font-size:14px; font-weight:700; padding:12px 18px; border-radius:14px; margin-bottom:20px;">{{ adminMsg }}</div>
   </sc-if>
 
+  <sc-if value="{{ adminConnected }}" hint-placeholder-val="{{ false }}">
   <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; margin-bottom:28px;">
     <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:16px; padding:18px; text-align:center;"><div style="font-size:28px; font-weight:900; color:#818cf8;">{{ adminStats.activeRooms }}</div><div style="font-size:13px; color:#a9a7cc; margin-top:4px;">غرف نشطة</div></div>
     <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:16px; padding:18px; text-align:center;"><div style="font-size:28px; font-weight:900; color:#ec4899;">{{ adminStats.totalPlayers }}</div><div style="font-size:13px; color:#a9a7cc; margin-top:4px;">لاعبون الآن</div></div>
     <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:16px; padding:18px; text-align:center;"><div style="font-size:28px; font-weight:900; color:#38bdf8;">{{ adminStats.users }}</div><div style="font-size:13px; color:#a9a7cc; margin-top:4px;">مستخدمون</div></div>
     <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:16px; padding:18px; text-align:center;"><div style="font-size:28px; font-weight:900; color:#fbbf24;">{{ adminStats.rounds }}</div><div style="font-size:13px; color:#a9a7cc; margin-top:4px;">جولات</div></div>
   </div>
+  </sc-if>
+  <sc-if value="{{ !adminConnected }}" hint-placeholder-val="{{ true }}">
+  <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; margin-bottom:28px;">
+    <div class="wsl-shimmer" style="border:1px solid rgba(255,255,255,.09); border-radius:16px; height:76px;"></div>
+    <div class="wsl-shimmer" style="border:1px solid rgba(255,255,255,.09); border-radius:16px; height:76px;"></div>
+    <div class="wsl-shimmer" style="border:1px solid rgba(255,255,255,.09); border-radius:16px; height:76px;"></div>
+    <div class="wsl-shimmer" style="border:1px solid rgba(255,255,255,.09); border-radius:16px; height:76px;"></div>
+  </div>
+  </sc-if>
 
   <div style="background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); border-radius:20px; padding:24px; margin-bottom:24px;">
     <h3 style="font-size:17px; font-weight:800; margin:0 0 16px;">إضافة جولة جديدة</h3>
@@ -678,7 +694,7 @@ class Component extends DCLogic {
     maxPlayers: 3, created: false, roomCode: '',
     user: null, loginName: '', loginTab: 'login', regName: '', regPass: '', regConfirm: '',
     loading: false, offline: false, joinCode: '', joinName: '',
-    elapsed: 0, roundIndex: 0, answer: '', locked: 0, showHint: false, gameScore: 0, hintText: '', hintShown: false, wrongCount: 0,
+    elapsed: 0, roundIndex: 0, answer: '', locked: 0, showHint: false, gameScore: 0, hintText: '', hintShown: false, wrongCount: 0, resultsTickerScore: 0,
     role: 'captain',
     // الاتصال بالخادم
     connected: false, serverImage: null, lobbyPlayers: [], statusMsg: '', deviceId: null,
@@ -722,6 +738,34 @@ class Component extends DCLogic {
         window.history.replaceState(null, '', window.location.pathname);
       }
     } catch (e) {}
+  }
+
+  // يشغّل عدّاد النقاط المتصاعد لحظة الوصول لشاشة النتائج (يُستدعى مرة وحدة بس عبر علم داخلي، مو من الحالة).
+  componentDidUpdate() {
+    if (this.state.page === 'results') {
+      if (!this._resultsTicked) { this._resultsTicked = true; this._startScoreTicker(this._topScore()); }
+    } else {
+      this._resultsTicked = false;
+    }
+  }
+  _topScore() {
+    const results = this.state.serverResults || [];
+    if (results.length) return Math.max(0, ...results.map((r) => r.score || 0));
+    return this.state.gameScore || 0;
+  }
+  _startScoreTicker(target) {
+    clearInterval(this._scoreTickerTimer);
+    target = Math.max(0, target || 0);
+    if (!target) { this.setState({ resultsTickerScore: 0 }); return; }
+    const steps = Math.min(20, target * 4);
+    let i = 0;
+    this.setState({ resultsTickerScore: 0 });
+    this._scoreTickerTimer = setInterval(() => {
+      i++;
+      const val = Math.round((target * i) / steps);
+      this.setState({ resultsTickerScore: val });
+      if (i >= steps) clearInterval(this._scoreTickerTimer);
+    }, 400 / steps);
   }
 
   _saveSession(user) {
@@ -1096,7 +1140,7 @@ class Component extends DCLogic {
             upd.credits = res.credits;
             if (this.state.user) { upd.user = { ...this.state.user, credits: res.credits }; this._saveSession(upd.user); }
           }
-          this.setState(upd);
+          this._applyWithViewTransition(upd);
         } else if (res && res.error) {
           // رصيد غير كافٍ أو خطأ من الخادم — اعرضه بلطف بدل الوضع المحلي
           this.setState({ loading: false, statusMsg: res.error });
@@ -1109,7 +1153,13 @@ class Component extends DCLogic {
     }
   }
   _createLocal() {
-    this.setState({ created: true, roomCode: String(Math.floor(100000 + Math.random() * 900000)), loading: false, offline: true, role: null, myTeamIndex: null, serverTeams: this.localTeams() });
+    this._applyWithViewTransition({ created: true, roomCode: String(Math.floor(100000 + Math.random() * 900000)), loading: false, offline: true, role: null, myTeamIndex: null, serverTeams: this.localTeams() });
+  }
+  // انتقال سلس بين شاشة إنشاء الغرفة وشاشة "الغرفة جاهزة" (رقم الغرفة يظهر لأول مرة) عبر View Transitions API لو مدعومة، وإلا يطبّق التحديث مباشرة.
+  _applyWithViewTransition(upd) {
+    const apply = () => new Promise((resolve) => this.setState(upd, resolve));
+    if (typeof document !== 'undefined' && document.startViewTransition) document.startViewTransition(apply);
+    else apply();
   }
   startGame() {
     const t = (this.state.serverTeams || [])[this.state.myTeamIndex];
@@ -1454,7 +1504,7 @@ class Component extends DCLogic {
       showInputView: this.state.role === 'captain' && this.state.locked === 0,
       iconMicLg: I(ic.mic, 26, '#818cf8'),
       trophyIcon: I(ic.trophy, 34, '#3b2a06'),
-      resultsTeams: rt, winnerName: rt[0].name, winnerScore: arNum(rt[0].sc + ' / ' + rtTotal), winnerTime: rt[0].timeStr,
+      resultsTeams: rt, winnerName: rt[0].name, winnerScore: arNum(this.state.resultsTickerScore + ' / ' + rtTotal), winnerTime: rt[0].timeStr,
       iconUsers: I(ic.users, 22), iconClock: I(ic.clock, 22), iconLock: I(ic.lock, 22), iconShare: I(ic.share, 22), iconTrophy: I(ic.trophy, 22),
       iconImg: I(ic.img, 18), iconPlus: I(ic.plus, 18), iconEnter: I(ic.enter, 18), iconEnterLg: I(ic.enter, 26, '#fff'),
       iconKey: I(ic.key, 26, '#fff'), iconSend: I(ic.send, 17), iconClockLg: I(ic.clock, 24, '#34d399'), iconLockLg: I(ic.lock, 26), iconShareSm: I(ic.share, 15),
@@ -1462,5 +1512,5 @@ class Component extends DCLogic {
   }
 }
 </script>
-<script src="/password-eye.js" defer></script><script src="/enter-submit.js" defer></script><script src="/share-result.js" defer></script><script src="/admin-users.js" defer></script></body>
+<script src="/password-eye.js" defer></script><script src="/enter-submit.js" defer></script><script src="/share-result.js" defer></script><script src="/admin-users.js" defer></script><script src="/ripple.js" defer></script></body>
 </html>
