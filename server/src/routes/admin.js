@@ -14,7 +14,9 @@ function toApiRound(r) {
     id: r.id,
     hint: r.hint,
     answers: r.answers,
+    question: r.question || '',
     hintPlayerIndex: r.hintPlayerIndex || 1,
+    category: r.category || '',
     images: r.images,
   };
 }
@@ -24,7 +26,7 @@ router.get('/rounds', (req, res) => {
 });
 
 router.post('/rounds', async (req, res) => {
-  const { hint, answers, hintPlayerIndex } = req.body || {};
+  const { hint, answers, hintPlayerIndex, category, question } = req.body || {};
   // الإجابة إجبارية (إجابة واحدة على الأقل). التلميح اختياري، وإذا تُرك فاضي فلا تلميح لهذي الجولة.
   const list = String(answers || '')
     .split('،')
@@ -39,8 +41,19 @@ router.post('/rounds', async (req, res) => {
     hint: String(hint || '').trim(),
     answers: list,
     hintPlayerIndex,
+    category: String(category || '').trim(),
+    question: String(question || '').trim(),
   });
   res.json(toApiRound(round));
+});
+
+// تعديل تصنيف جولة موجودة (بدون التأثير على بقية بياناتها).
+router.patch('/rounds/:id', async (req, res) => {
+  const round = db.getRound(req.params.id);
+  if (!round) return res.status(404).json({ error: 'الجولة غير موجودة' });
+  const { category } = req.body || {};
+  const updated = await db.setRoundCategory(req.params.id, category);
+  res.json(toApiRound(updated));
 });
 
 router.delete('/rounds/:id', async (req, res) => {

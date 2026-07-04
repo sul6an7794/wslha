@@ -305,13 +305,28 @@ function getRound(id) {
   return { ...r, images: getRoundImages(r.id) };
 }
 function getRoundsCount() { return state.rounds.length; }
-async function insertRound({ hint, answers, hintPlayerIndex }) {
+async function insertRound({ hint, answers, hintPlayerIndex, category, question }) {
   const idx = Number(hintPlayerIndex);
   const id = await backend.nextId('rounds');
-  const round = { id, hint, answers, hintPlayerIndex: Number.isFinite(idx) && idx > 0 ? Math.floor(idx) : 1, created_at: new Date().toISOString() };
+  const round = {
+    id,
+    hint,
+    answers,
+    hintPlayerIndex: Number.isFinite(idx) && idx > 0 ? Math.floor(idx) : 1,
+    category: String(category || '').trim(),
+    question: String(question || '').trim(),
+    created_at: new Date().toISOString(),
+  };
   state.rounds.push(round);
   await backend.putRound(round);
   return { ...round, images: [] };
+}
+async function setRoundCategory(id, category) {
+  const round = state.rounds.find((r) => r.id === Number(id));
+  if (!round) return null;
+  round.category = String(category || '').trim();
+  await backend.putRound(round);
+  return { ...round, images: getRoundImages(round.id) };
 }
 async function deleteRound(id) {
   const rid = Number(id);
@@ -341,6 +356,7 @@ module.exports = {
   getRound,
   getRoundsCount,
   insertRound,
+  setRoundCategory,
   deleteRound,
   insertRoundImage,
   setImagePosition,

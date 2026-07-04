@@ -486,6 +486,14 @@
       <label style="display:block; font-size:13px; font-weight:700; margin-bottom:6px; color:#d8d6ee;">سؤال الجولة <span style="color:#6b6894; font-weight:500;">(اختياري)</span></label>
       <input value="{{ newQuestion }}" onInput="{{ setNewQuestion }}" placeholder="مثال: ما القاسم المشترك بين الصور؟" style="width:100%; font-family:'Thmanyah Sans',sans-serif; font-size:15px; color:#f1f0ff; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.14); border-radius:12px; padding:12px 14px; outline:none;" style-focus="border-color:rgba(129,140,248,.7);">
     </div>
+    <div style="margin-bottom:14px;">
+      <label style="display:block; font-size:13px; font-weight:700; margin-bottom:6px; color:#d8d6ee;">تصنيف الجولة <span style="color:#6b6894; font-weight:500;">(للتنظيم الداخلي فقط — لا يظهر للاعب)</span></label>
+      <select value="{{ newCategory }}" onchange="{{ setNewCategory }}" style="width:100%; font-family:'Thmanyah Sans',sans-serif; font-size:15px; font-weight:700; color:#f1f0ff; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.14); border-radius:12px; padding:12px 14px; outline:none; cursor:pointer; color-scheme:dark;" style-focus="border-color:rgba(129,140,248,.7);">
+        <sc-for list="{{ categoryList }}" as="cat" hint-placeholder-count="8">
+          <option value="{{ cat }}" style="background:#15122e; color:#f1f0ff;">{{ cat }}</option>
+        </sc-for>
+      </select>
+    </div>
     <button onClick="{{ createRound }}" style="font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:15px; color:#fff; background:linear-gradient(135deg,#818cf8,#ec4899); border:none; padding:12px 26px; border-radius:12px; cursor:pointer;" style-hover="filter:brightness(1.08);">+ إنشاء الجولة</button>
   </div>
 
@@ -495,6 +503,19 @@
       <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:18px; padding:20px;">
         <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
           <div style="flex:1;"><div style="font-size:16px; font-weight:800;">{{ r.hint }}</div><div style="font-size:13px; color:#a9a7cc; margin-top:3px;">الإجابات: {{ r.answersText }}</div></div>
+          <sc-if value="{{ !r.editingCategory }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <div style="font-size:12px; font-weight:800; color:#fff; background:linear-gradient(135deg,#818cf8,#ec4899); padding:5px 12px; border-radius:20px; white-space:nowrap;">{{ r.category }}</div>
+              <button onClick="{{ r.startEditCategory }}" title="تعديل التصنيف" style="display:flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:8px; background:rgba(129,140,248,.12); border:1px solid rgba(129,140,248,.3); color:#c4b5fd; cursor:pointer; font-size:12px;" style-hover="background:rgba(129,140,248,.2);">✎</button>
+            </div>
+          </sc-if>
+          <sc-if value="{{ r.editingCategory }}" hint-placeholder-val="{{ false }}">
+            <select value="{{ r.categoryValue }}" onchange="{{ r.onCategoryChange }}" style="font-family:'Thmanyah Sans',sans-serif; font-size:12px; font-weight:700; color:#f1f0ff; background:rgba(255,255,255,.06); border:1px solid rgba(129,140,248,.4); border-radius:14px; padding:6px 10px; outline:none; cursor:pointer; color-scheme:dark;" style-focus="border-color:rgba(129,140,248,.7);">
+              <sc-for list="{{ categoryList }}" as="cat" hint-placeholder-count="8">
+                <option value="{{ cat }}" style="background:#15122e; color:#f1f0ff;">{{ cat }}</option>
+              </sc-for>
+            </select>
+          </sc-if>
           <div style="font-size:13px; font-weight:700; color:#818cf8; background:rgba(129,140,248,.12); padding:5px 12px; border-radius:20px;">{{ r.imageCount }} صور</div>
           <button onClick="{{ r.del }}" style="display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:10px; background:rgba(244,63,94,.12); border:1px solid rgba(244,63,94,.3); color:#f43f5e; cursor:pointer;" style-hover="background:rgba(244,63,94,.2);">{{ iconTrash }}</button>
         </div>
@@ -631,6 +652,9 @@
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;100%&quot;,&quot;height&quot;:820},&quot;apiUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;الخادم&quot;}}">
 function arNum(v) { return String(v).replace(/[0-9]/g, d => '٠١٢٣٤٥٦٧٨٩'[d]); }
 
+// تصنيف الجولة: وسم تنظيمي يحدده المشرف فقط من لوحة التحكم — لا يظهر ولا يؤثر على اللاعب أبدًا.
+const CATEGORY_LIST = ['الاختلاف', 'تحدي الصور', 'معادلات', 'أعلام', 'خرائط', 'أمثله', 'ترتيب', 'الشعار الصح'];
+
 class Component extends DCLogic {
   state = {
     page: 'home',
@@ -642,7 +666,7 @@ class Component extends DCLogic {
     // الاتصال بالخادم
     token: null, connected: false, serverImage: null, lobbyPlayers: [], statusMsg: '',
     // لوحة التحكم
-    adminRounds: [], adminStats: null, newHint: '', newAnswers: '', newQuestion: '', adminMsg: '',
+    adminRounds: [], adminStats: null, newHint: '', newAnswers: '', newQuestion: '', newCategory: CATEGORY_LIST[0], adminMsg: '', editingCategoryId: null,
     serverTeams: [], myTeamIndex: null, namingTeam: null, teamNameInput: '', startRequested: false, shareCopied: false, zoomOpen: false, countdown: 0,
     // الحساب: القوائم والتذاكر وتعديل الملف
     menuOpen: false, creditOpen: false, editMode: false, editSection: null,
@@ -1016,19 +1040,21 @@ class Component extends DCLogic {
   _saveLocalRounds(list) { try { localStorage.setItem('wsl_admin_rounds', JSON.stringify(list || [])); } catch (e) {} }
   setNewHint(e) { this.setState({ newHint: e.target.value }); }
   setNewAnswers(e) { this.setState({ newAnswers: e.target.value }); }
+  setNewCategory(e) { this.setState({ newCategory: e.target.value }); }
   async createRound() {
     const hint = (this.state.newHint || '').trim();
     const answersRaw = (this.state.newAnswers || '').trim();
     if (!answersRaw) { this.setState({ adminMsg: 'أدخل الإجابات المقبولة أولاً' }); return; }
     const answers = answersRaw.split(/[،,]/).map(a => a.trim()).filter(Boolean);
     const question = (this.state.newQuestion || '').trim();
+    const category = this.state.newCategory || CATEGORY_LIST[0];
     try {
-      await this.api('/api/admin/rounds', { method: 'POST', body: JSON.stringify({ hint, answers: answersRaw, question }) });
+      await this.api('/api/admin/rounds', { method: 'POST', body: JSON.stringify({ hint, answers: answersRaw, question, category }) });
       this.setState({ newHint: '', newAnswers: '', newQuestion: '' });
       this.loadAdmin();
     } catch (e) {
       const local = this._loadLocalRounds();
-      local.unshift({ id: 'L' + Date.now(), hint: hint || (question || answers[0] || 'جولة'), answers, question, images: [] });
+      local.unshift({ id: 'L' + Date.now(), hint: hint || (question || answers[0] || 'جولة'), answers, question, category, images: [] });
       this._saveLocalRounds(local);
       this.setState({ newHint: '', newAnswers: '', newQuestion: '', adminRounds: local, adminMsg: '' });
     }
@@ -1037,6 +1063,16 @@ class Component extends DCLogic {
     try { await this.api('/api/admin/rounds/' + id, { method: 'DELETE' }); this.loadAdmin(); }
     catch (e) {
       const local = this._loadLocalRounds().filter(r => String(r.id) !== String(id));
+      this._saveLocalRounds(local);
+      this.setState({ adminRounds: local, adminMsg: '' });
+    }
+  }
+  startEditCategory(id) { this.setState({ editingCategoryId: id }); }
+  async saveCategory(id, category) {
+    this.setState({ editingCategoryId: null });
+    try { await this.api('/api/admin/rounds/' + id, { method: 'PATCH', body: JSON.stringify({ category }) }); this.loadAdmin(); }
+    catch (e) {
+      const local = this._loadLocalRounds().map(r => String(r.id) === String(id) ? { ...r, category } : r);
       this._saveLocalRounds(local);
       this.setState({ adminRounds: local, adminMsg: '' });
     }
@@ -1216,6 +1252,11 @@ class Component extends DCLogic {
         id: r.id, hint: r.hint || '—',
         answersText: (r.answers || []).join('، '),
         question: r.question || '', hasQuestion: !!r.question,
+        category: r.category || '—',
+        editingCategory: this.state.editingCategoryId === r.id,
+        categoryValue: r.category || CATEGORY_LIST[0],
+        startEditCategory: () => this.startEditCategory(r.id),
+        onCategoryChange: (e) => this.saveCategory(r.id, e.target.value),
         imageCount: arNum((r.images || []).length),
         thumbs: (r.images || []).slice(0, 6).map((im, k) => ({
           label: 'لاعب ' + arNum(k + 1),
@@ -1233,6 +1274,8 @@ class Component extends DCLogic {
       adminConnected: !!this.state.adminStats,
       newHint: this.state.newHint, setNewHint: (e) => this.setNewHint(e),
       newAnswers: this.state.newAnswers, setNewAnswers: (e) => this.setNewAnswers(e),
+      newCategory: this.state.newCategory || CATEGORY_LIST[0], setNewCategory: (e) => this.setNewCategory(e),
+      categoryList: CATEGORY_LIST,
       createRound: () => this.createRound(),
       adminMsg: this.state.adminMsg, hasAdminMsg: !!this.state.adminMsg,
       iconCog: I(ic.cog, 18), iconUpload: I(ic.upload, 16), iconTrash: I(ic.trash, 16),
