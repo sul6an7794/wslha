@@ -681,7 +681,7 @@ class Component extends DCLogic {
     elapsed: 0, roundIndex: 0, answer: '', locked: 0, showHint: false, gameScore: 0, hintText: '', hintShown: false, wrongCount: 0,
     role: 'captain',
     // الاتصال بالخادم
-    token: null, connected: false, serverImage: null, lobbyPlayers: [], statusMsg: '', deviceId: null,
+    connected: false, serverImage: null, lobbyPlayers: [], statusMsg: '', deviceId: null,
     // لوحة التحكم
     adminRounds: [], adminStats: null, newHint: '', newAnswers: '', newQuestion: '', newCategory: CATEGORY_LIST[0], adminMsg: '', editingCategoryId: null,
     serverTeams: [], myTeamIndex: null, namingTeam: null, teamNameInput: '', startRequested: false, shareCopied: false, zoomOpen: false, countdown: 0,
@@ -699,15 +699,18 @@ class Component extends DCLogic {
     };
     if (typeof window !== 'undefined') { window.addEventListener('resize', this._onResize); this._onResize(); }
     this.setState({ deviceId: this._deviceId() });
-    let token = null, user = null;
+    // التوكن نفسه ما يُخزَّن هنا إطلاقًا (كوكي HttpOnly من السيرفر يتكفّل فيه) —
+    // بس نستخدم آخر بيانات مستخدم مخزّنة محليًا لعرض فوري متفائل بانتظار تأكيد /me من السيرفر.
+    let user = null;
     try {
-      token = localStorage.getItem('wsl_token');
       const u = localStorage.getItem('wsl_user');
       if (u) user = JSON.parse(u);
     } catch (e) {}
-    if (token && user) {
-      this.setState({ token, user, credits: (user.credits != null ? user.credits : this.state.credits) }, () => { this.connectSocket(); this.refreshMe(); });
-    } else if (this._loadResume()) {
+    if (user) {
+      this.setState({ user, credits: (user.credits != null ? user.credits : this.state.credits) }, () => this.connectSocket());
+    }
+    this.refreshMe();
+    if (!user && this._loadResume()) {
       // ضيف كان بمنتصف لوبي فريق قبل ما يقفل المتصفح — نتصل بالسيرفر مباشرة عشان نحاول نرجّعه مكانه.
       this.connectSocket();
     }
@@ -721,14 +724,11 @@ class Component extends DCLogic {
     } catch (e) {}
   }
 
-  _saveSession(token, user) {
-    try {
-      if (token) localStorage.setItem('wsl_token', token);
-      if (user) localStorage.setItem('wsl_user', JSON.stringify(user));
-    } catch (e) {}
+  _saveSession(user) {
+    try { if (user) localStorage.setItem('wsl_user', JSON.stringify(user)); } catch (e) {}
   }
   _clearSession() {
-    try { localStorage.removeItem('wsl_token'); localStorage.removeItem('wsl_user'); } catch (e) {}
+    try { localStorage.removeItem('wsl_user'); } catch (e) {}
   }
   // معرّف جهاز/متصفح ثابت (يبقى بعد إغلاق المتصفح) — يُستخدم لاسترجاع نفس مكان اللاعب بالفريق بعد انقطاع الاتصال.
   _deviceId() {
@@ -747,11 +747,16 @@ class Component extends DCLogic {
   _clearResume() {
     try { localStorage.removeItem('wsl_resume'); } catch (e) {}
   }
+  // يتحقق من جلسة الكوكي عند السيرفر مباشرة (بدل الاعتماد على توكن مخزَّن بالجافاسكربت).
   refreshMe() {
-    if (!this.state.token) return;
     this.api('/api/auth/me').then(({ user }) => {
-      if (user) { this._saveSession(this.state.token, user); this.setState({ user, credits: (user.credits != null ? user.credits : this.state.credits) }); }
-    }).catch(() => {});
+      if (!user) return;
+      this._saveSession(user);
+      this.setState({ user, credits: (user.credits != null ? user.credits : this.state.credits) }, () => { if (!this._socket) this.connectSocket(); });
+    }).catch(() => {
+      // ما فيه جلسة صالحة عند السيرفر — امسح أي بيانات محلية قديمة متبقية.
+      if (this.state.user) { this._clearSession(); this.setState({ user: null }); }
+    });
   }
   _errText(e) { return (e && e.status) ? ((e.data && e.data.error) || 'حدث خطأ') : 'تعذّر الاتصال بالخادم'; }
 
@@ -777,9 +782,8 @@ class Component extends DCLogic {
     try {
       const res = await this.api('/api/auth/profile', { method: 'PATCH', body: JSON.stringify({ username }) });
       const user = res.user || { ...this.state.user, username };
-      const token = res.token || this.state.token;
-      this._saveSession(token, user);
-      this.setState({ user, token, profileMsg: 'تم تغيير الاسم بنجاح', profileMsgType: 'ok', credits: (user.credits != null ? user.credits : this.state.credits) });
+      this._saveSession(user);
+      this.setState({ user, profileMsg: 'تم تغيير الاسم بنجاح', profileMsgType: 'ok', credits: (user.credits != null ? user.credits : this.state.credits) });
     } catch (e) { this.setState({ profileMsg: this._errText(e), profileMsgType: 'err' }); }
   }
   async savePass() {
@@ -788,10 +792,9 @@ class Component extends DCLogic {
     if (!currentPassword || !newPassword) { this.setState({ profileMsg: 'أدخل كلمة المرور الحالية والجديدة', profileMsgType: 'err' }); return; }
     try {
       const res = await this.api('/api/auth/profile', { method: 'PATCH', body: JSON.stringify({ currentPassword, newPassword }) });
-      const token = res.token || this.state.token;
       const user = res.user || this.state.user;
-      this._saveSession(token, user);
-      this.setState({ curPass: '', newPass: '', token, user, profileMsg: 'تم تغيير كلمة المرور بنجاح', profileMsgType: 'ok' });
+      this._saveSession(user);
+      this.setState({ curPass: '', newPass: '', user, profileMsg: 'تم تغيير كلمة المرور بنجاح', profileMsgType: 'ok' });
     } catch (e) { this.setState({ profileMsg: this._errText(e), profileMsgType: 'err' }); }
   }
 
@@ -905,8 +908,8 @@ class Component extends DCLogic {
   api(pathname, opts) {
     const base = this.apiBase();
     const headers = { 'Content-Type': 'application/json' };
-    if (this.state.token) headers.Authorization = 'Bearer ' + this.state.token;
-    return fetch(base + pathname, Object.assign({ headers }, opts)).then(async (r) => {
+    // الجلسة تُرسل عبر كوكي HttpOnly تلقائيًا (credentials:'include') — ما نخزّن أو نرسل التوكن من الجافاسكربت.
+    return fetch(base + pathname, Object.assign({ headers, credentials: 'include' }, opts)).then(async (r) => {
       const data = await r.json().catch(() => ({}));
       if (!r.ok) throw Object.assign(new Error(data.error || 'خطأ'), { status: r.status, data });
       return data;
@@ -916,7 +919,7 @@ class Component extends DCLogic {
   connectSocket() {
     if (this._socket || typeof window === 'undefined' || !window.io) return this._socket;
     const base = this.apiBase();
-    const s = window.io(base, { auth: { token: this.state.token, deviceId: this.state.deviceId || this._deviceId() }, timeout: 4000, reconnection: true });
+    const s = window.io(base, { auth: { deviceId: this.state.deviceId || this._deviceId() }, withCredentials: true, timeout: 4000, reconnection: true });
     this._socket = s;
     s.on('connect', () => { this.setState({ connected: true }); this._tryResume(); });
     s.on('disconnect', () => this.setState({ connected: false }));
@@ -1021,9 +1024,9 @@ class Component extends DCLogic {
     const username = (this.state.loginName || '').trim();
     if (!username) { this.setState({ authErr: 'أدخل اسم المستخدم' }); return; }
     try {
-      const { token, user } = await this.api('/api/auth/login', { method: 'POST', body: JSON.stringify({ username, password: this.state.loginPass || '' }) });
-      this._saveSession(token, user);
-      this.setState({ token, user, authErr: '', loginPass: '', credits: (user.credits != null ? user.credits : this.state.credits) }, () => this.connectSocket());
+      const { user } = await this.api('/api/auth/login', { method: 'POST', body: JSON.stringify({ username, password: this.state.loginPass || '' }) });
+      this._saveSession(user);
+      this.setState({ user, authErr: '', loginPass: '', credits: (user.credits != null ? user.credits : this.state.credits) }, () => this.connectSocket());
       this.go('home');
     } catch (e) {
       this.setState({ authErr: this._errText(e) });
@@ -1036,16 +1039,23 @@ class Component extends DCLogic {
     if (password.length < 6) { this.setState({ authErr: 'كلمة المرور قصيرة جدًا (6 أحرف على الأقل)' }); return; }
     if (password !== (this.state.regConfirm || '')) { this.setState({ authErr: 'كلمتا المرور غير متطابقتين' }); return; }
     try {
-      const { token, user } = await this.api('/api/auth/register', { method: 'POST', body: JSON.stringify({ username, password }) });
-      this._saveSession(token, user);
-      this.setState({ token, user, authErr: '', regPass: '', regConfirm: '', credits: (user.credits != null ? user.credits : this.state.credits) }, () => this.connectSocket());
+      const { user } = await this.api('/api/auth/register', { method: 'POST', body: JSON.stringify({ username, password }) });
+      this._saveSession(user);
+      this.setState({ user, authErr: '', regPass: '', regConfirm: '', credits: (user.credits != null ? user.credits : this.state.credits) }, () => this.connectSocket());
       this.go('home');
     } catch (e) {
       this.setState({ authErr: this._errText(e) });
     }
   }
   _netNote(e) { return (e && e.status) ? (e.data && e.data.error) || 'خطأ' : 'وضع محلي — الخادم غير متصل'; }
-  logout() { if (this._socket) { try { this._socket.disconnect(); } catch (x) {} this._socket = null; } this._clearSession(); this.setState({ user: null, token: null, connected: false, menuOpen: false, creditOpen: false, editMode: false, credits: 10 }); this.go('home'); }
+  logout() {
+    if (this._socket) { try { this._socket.disconnect(); } catch (x) {} this._socket = null; }
+    // كوكي الجلسة HttpOnly، ما يقدر الجافاسكربت يمسحه بنفسه — لازم طلب للسيرفر يمسحه.
+    this.api('/api/auth/logout', { method: 'POST' }).catch(() => {});
+    this._clearSession();
+    this.setState({ user: null, connected: false, menuOpen: false, creditOpen: false, editMode: false, credits: 10 });
+    this.go('home');
+  }
   setLoginPass(e) { this.setState({ loginPass: e.target.value }); }
   setJoinCode(e) { this.setState({ joinCode: e.target.value }); }
   setJoinName(e) { this.setState({ joinName: e.target.value }); }
@@ -1084,7 +1094,7 @@ class Component extends DCLogic {
           const upd = { created: true, roomCode: String(res.roomCode), loading: false, role: null, myTeamIndex: null, serverTeams: res.teams || [], offline: false };
           if (res.credits != null) {
             upd.credits = res.credits;
-            if (this.state.user) { upd.user = { ...this.state.user, credits: res.credits }; this._saveSession(this.state.token, upd.user); }
+            if (this.state.user) { upd.user = { ...this.state.user, credits: res.credits }; this._saveSession(upd.user); }
           }
           this.setState(upd);
         } else if (res && res.error) {
@@ -1168,8 +1178,7 @@ class Component extends DCLogic {
     const fd = new FormData();
     for (const f of fileList) fd.append('images', f);
     try {
-      const headers = {}; if (this.state.token) headers.Authorization = 'Bearer ' + this.state.token;
-      const r = await fetch(base + '/api/admin/rounds/' + roundId + '/images', { method: 'POST', headers, body: fd });
+      const r = await fetch(base + '/api/admin/rounds/' + roundId + '/images', { method: 'POST', credentials: 'include', body: fd });
       if (!r.ok) throw new Error('');
       this.loadAdmin();
     } catch (e) { this.setState({ adminMsg: this._netNote(e) }); }

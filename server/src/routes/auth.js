@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { hashPassword, verifyPassword, signToken, authMiddleware } = require('../auth');
+const { hashPassword, verifyPassword, signToken, authMiddleware, setAuthCookie, clearAuthCookie } = require('../auth');
 
 // تمثيل عام للمستخدم (بدون كلمة المرور) — يُرسل للواجهة.
 function publicUser(u) {
@@ -57,6 +57,8 @@ router.post('/register', authLimit, async (req, res) => {
   const hash = hashPassword(password);
   const user = await db.insertUser({ username: name, password_hash: hash, is_admin: isAdmin });
   const token = signToken(user);
+  setAuthCookie(req, res, token);
+  // نرجّع التوكن بالجسم كمان للنسخة المستقلة من الواجهة (أصل مختلف ما توصله الكوكي).
   res.json({ token, user: publicUser(user) });
 });
 
@@ -68,7 +70,14 @@ router.post('/login', authLimit, (req, res) => {
     return res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
   }
   const token = signToken(user);
+  setAuthCookie(req, res, token);
   res.json({ token, user: publicUser(user) });
+});
+
+// تسجيل الخروج: يمسح كوكي الجلسة (الكوكي HttpOnly فما يقدر الجافاسكربت يمسحه بنفسه).
+router.post('/logout', (req, res) => {
+  clearAuthCookie(req, res);
+  res.json({ ok: true });
 });
 
 // بيانات الحساب الحالي (يشمل الرصيد المحدّث) — تُستخدم لتحديث الرصيد بعد كل لعبة.
@@ -113,8 +122,9 @@ router.patch('/profile', authMiddleware, async (req, res) => {
   }
 
   const updated = await db.updateUserFields(user.id, fields);
-  // إذا تغيّر الاسم نُصدر توكن جديد لأن الاسم مضمّن فيه.
+  // إذا تغيّر الاسم نُصدر توكن جديد لأن الاسم مضمّن فيه، ونحدّث الكوكي بنفس القيمة الجديدة.
   const token = fields.username ? signToken(updated) : undefined;
+  if (token) setAuthCookie(req, res, token);
   res.json({ user: publicUser(updated), token });
 });
 

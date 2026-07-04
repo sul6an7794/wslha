@@ -36,9 +36,49 @@ function verifyToken(token) {
   }
 }
 
-function authMiddleware(req, res, next) {
+const COOKIE_NAME = 'wsl_token';
+const COOKIE_MAX_AGE = 30 * 24 * 60 * 60 * 1000; // 30 يوم — يطابق مدة صلاحية التوكن نفسه
+
+// تحليل بسيط لترويسة Cookie الخام (بدون الاعتماد على حزمة خارجية إضافية).
+function parseCookies(header) {
+  const out = {};
+  String(header || '')
+    .split(';')
+    .forEach((pair) => {
+      const i = pair.indexOf('=');
+      if (i === -1) return;
+      const k = pair.slice(0, i).trim();
+      const v = pair.slice(i + 1).trim();
+      if (k) { try { out[k] = decodeURIComponent(v); } catch (e) { out[k] = v; } }
+    });
+  return out;
+}
+
+// نفضّل الكوكي (HttpOnly، غير مرئي للجافاسكربت) على ترويسة Authorization،
+// ونسمح بـ Authorization كبديل فقط للاستخدام من أصل مختلف (النسخة المستقلة من الواجهة).
+function getTokenFromReq(req) {
+  const cookies = parseCookies(req.headers.cookie);
+  if (cookies[COOKIE_NAME]) return cookies[COOKIE_NAME];
   const h = req.headers.authorization || '';
-  const token = h.startsWith('Bearer ') ? h.slice(7) : null;
+  return h.startsWith('Bearer ') ? h.slice(7) : null;
+}
+
+function setAuthCookie(req, res, token) {
+  res.cookie(COOKIE_NAME, token, {
+    httpOnly: true,
+    secure: req.secure,
+    sameSite: 'lax',
+    maxAge: COOKIE_MAX_AGE,
+    path: '/',
+  });
+}
+
+function clearAuthCookie(req, res) {
+  res.clearCookie(COOKIE_NAME, { httpOnly: true, secure: req.secure, sameSite: 'lax', path: '/' });
+}
+
+function authMiddleware(req, res, next) {
+  const token = getTokenFromReq(req);
   const payload = token ? verifyToken(token) : null;
   if (!payload) return res.status(401).json({ error: 'يجب تسجيل الدخول' });
   // أمان: نتحقق من المستخدم من القاعدة (مو من التوكن) — فالحساب المحذوف أو المُنزَّل
@@ -64,4 +104,7 @@ module.exports = {
   verifyToken,
   authMiddleware,
   adminMiddleware,
+  setAuthCookie,
+  clearAuthCookie,
+  parseCookies,
 };

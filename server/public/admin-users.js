@@ -5,15 +5,14 @@
  */
 (function () {
   'use strict';
-  var API = location.origin, TKEY = 'wsl_token';
+  var API = location.origin;
   var cache = [];
 
-  function token() { try { return localStorage.getItem(TKEY); } catch (e) { return null; } }
+  // جلسة الدخول تُرسل عبر كوكي HttpOnly تلقائيًا (نفس أصل الصفحة) — ما نحتاج نقرأ توكن من localStorage.
   function api(path, opts) {
     opts = opts || {};
     var h = { 'Content-Type': 'application/json' };
-    var t = token(); if (t) h.Authorization = 'Bearer ' + t;
-    return fetch(API + path, Object.assign({ headers: h }, opts)).then(function (r) {
+    return fetch(API + path, Object.assign({ headers: h, credentials: 'include' }, opts)).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (d) {
         if (!r.ok) throw new Error(d.error || 'خطأ'); return d;
       });

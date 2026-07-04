@@ -1,4 +1,4 @@
-const { verifyToken } = require('./auth');
+const { verifyToken, parseCookies } = require('./auth');
 const roomsMgr = require('./rooms');
 const db = require('./db');
 
@@ -6,7 +6,10 @@ const ROOM_COST = 1; // كلفة إنشاء لعبة جديدة بالكريدت
 
 function registerSocket(io) {
   io.on('connection', (socket) => {
-    const token = socket.handshake.auth && socket.handshake.auth.token;
+    // نفضّل التوكن من كوكي HttpOnly (نفس آلية REST API)، ونسمح بـauth.token كبديل
+    // فقط للنسخة المستقلة من الواجهة (أصل مختلف ما توصله الكوكي).
+    const cookieToken = parseCookies(socket.handshake.headers.cookie).wsl_token;
+    const token = cookieToken || (socket.handshake.auth && socket.handshake.auth.token);
     const payload = token ? verifyToken(token) : null;
     socket.data.user = payload || null;
     socket.data.name = (payload && payload.username) || null;
