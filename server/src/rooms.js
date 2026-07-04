@@ -74,7 +74,7 @@ function teamSummary(room) {
     max: TEAM_SIZE,
     full: t.players.length >= TEAM_SIZE,
     started: t.started,
-    players: t.players.map((p) => ({ name: p.name, isCaptain: p.isCaptain })),
+    players: t.players.map((p) => ({ name: p.name, isCaptain: p.isCaptain, connected: p.connected !== false })),
   }));
 }
 
@@ -105,17 +105,53 @@ function broadcastRoomResults(io, room) {
 
 // لاعب يختار فريقًا (أو ينضم لفريق فيه أعضاء وفاضي مكان فيه).
 // أول من يدخل فريقًا فاضيًا يصبح قائده ويسمّيه.
+// إذا كان جهازه (deviceId) نفس جهاز عضو منقطع الاتصال بهذا الفريق، يسترجع مكانه بدل الانضمام كلاعب جديد.
 function chooseTeam(io, socket, { roomCode, teamIndex, teamName, name }) {
   const room = getRoom(roomCode);
   if (!room) return { error: 'لم يتم العثور على الغرفة' };
   const team = room.teams[Number(teamIndex)];
   if (!team) return { error: 'فريق غير موجود' };
+
+  const deviceId = socket.data.deviceId;
+  const ghost = deviceId ? team.players.find((p) => p.deviceId === deviceId && p.connected === false) : null;
+  if (ghost) {
+    ghost.socketId = socket.id;
+    ghost.connected = true;
+    if (name) ghost.name = name;
+    socket.join(room.code);
+    socket.join(room.code + ':' + team.index);
+    socket.data.roomCode = room.code;
+    socket.data.teamIndex = team.index;
+    broadcastLobby(io, room);
+    if (team.started) {
+      // الفريق كان قد بدأ اللعب أثناء انقطاعه — نعيد له صورته وحالة الجولة الحالية بدل تصفيرها.
+      const src = playerImageFor(room, team, ghost);
+      const round = room.rounds[Math.min(team.roundIndex, room.rounds.length - 1)];
+      const hintIdx = (round && round.hintPlayerIndex) || 1;
+      const playerPos = team.players.findIndex((p) => p.socketId === ghost.socketId);
+      const hint = round && playerPos + 1 === hintIdx ? round.hint || '' : '';
+      io.to(socket.id).emit('yourImage', { src, hint });
+    }
+    return {
+      ok: true,
+      teamIndex: team.index,
+      isCaptain: ghost.isCaptain,
+      teams: teamSummary(room),
+      reclaimed: true,
+      started: team.started,
+      roundIndex: team.roundIndex,
+      score: team.score,
+      elapsed: team.elapsed,
+      lockedSeconds: team.locked,
+    };
+  }
+
   if (team.started) return { error: 'هذا الفريق بدأ اللعب بالفعل' };
   if (team.players.length >= TEAM_SIZE) return { error: 'الفريق مكتمل' };
 
   const isCaptain = team.players.length === 0;
   if (isCaptain) team.name = (teamName || '').trim() || 'فريق ' + (team.index + 1);
-  team.players.push({ socketId: socket.id, name: name || 'لاعب', isCaptain });
+  team.players.push({ socketId: socket.id, name: name || 'لاعب', isCaptain, deviceId, connected: true });
 
   socket.join(room.code);
   socket.join(room.code + ':' + team.index);
@@ -255,30 +291,22 @@ function submitAnswer(io, socket, answer) {
   return { ok: true, correct: false, lockedSeconds: team.locked };
 }
 
-function leave(io, socket) {
-  const code = socket.data.roomCode;
-  if (!code) return;
-  const room = getRoom(code);
-  if (!room) return;
-
-  const idx = socket.data.teamIndex;
-  if (idx != null && room.teams[idx]) {
-    const team = room.teams[idx];
-    team.players = team.players.filter((p) => p.socketId !== socket.id);
-    if (!team.players.length) {
-      clearInterval(team.timer);
-      clearInterval(team.lockTimer);
-      team.timer = null;
-      team.lockTimer = null;
-      team.name = '';
-      team.started = false;
-      team.roundIndex = 0;
-      team.score = 0;
-      team.elapsed = 0;
-      team.locked = 0;
-    } else if (!team.players.some((p) => p.isCaptain)) {
-      team.players[0].isCaptain = true;
-    }
+// يشيل اللاعب فعليًا من الفريق (يُستدعى لمغادرة صريحة، أو لانقطاع أثناء لعبة بدأت فعلًا).
+function removePlayerFromTeam(io, room, team, socketId) {
+  team.players = team.players.filter((p) => p.socketId !== socketId);
+  if (!team.players.length) {
+    clearInterval(team.timer);
+    clearInterval(team.lockTimer);
+    team.timer = null;
+    team.lockTimer = null;
+    team.name = '';
+    team.started = false;
+    team.roundIndex = 0;
+    team.score = 0;
+    team.elapsed = 0;
+    team.locked = 0;
+  } else if (!team.players.some((p) => p.isCaptain)) {
+    team.players[0].isCaptain = true;
   }
 
   const anyPlayers = room.teams.some((t) => t.players.length > 0);
@@ -287,10 +315,46 @@ function leave(io, socket) {
       clearInterval(t.timer);
       clearInterval(t.lockTimer);
     });
-    rooms.delete(code);
+    rooms.delete(room.code);
     return;
   }
   broadcastLobby(io, room);
+}
+
+// انقطاع الاتصال (إغلاق التبويب، تحديث الصفحة، ضعف الشبكة...):
+// طالما الفريق لسا ما بدأ اللعب، نُبقي اللاعب محجوز مكانه (نعلّمه غير متصل فقط) بدل حذفه فورًا،
+// حتى يقدر يرجع بنفس مكانه (عبر chooseTeam بنفس deviceId). لو الفريق بدأ اللعب فعلًا، نحذفه كالمعتاد.
+function leave(io, socket) {
+  const code = socket.data.roomCode;
+  if (!code) return;
+  const room = getRoom(code);
+  if (!room) return;
+
+  const idx = socket.data.teamIndex;
+  if (idx == null || !room.teams[idx]) return;
+  const team = room.teams[idx];
+  const player = team.players.find((p) => p.socketId === socket.id);
+  if (!player) return;
+
+  if (!team.started) {
+    player.connected = false;
+    broadcastLobby(io, room);
+    return;
+  }
+  removePlayerFromTeam(io, room, team, socket.id);
+}
+
+// مغادرة صريحة (زر «مغادرة الغرفة») — يحرر مكان اللاعب فعليًا بغض النظر عن حالة الفريق.
+function leaveTeam(io, socket) {
+  const code = socket.data.roomCode;
+  if (!code) return;
+  const room = getRoom(code);
+  if (!room) return;
+  const idx = socket.data.teamIndex;
+  if (idx == null || !room.teams[idx]) return;
+  removePlayerFromTeam(io, room, room.teams[idx], socket.id);
+  socket.data.roomCode = null;
+  socket.data.teamIndex = null;
 }
 
 function getActiveRoomsStats() {
@@ -309,6 +373,7 @@ module.exports = {
   startGame,
   submitAnswer,
   leave,
+  leaveTeam,
   getRoom,
   getActiveRoomsStats,
 };

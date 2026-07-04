@@ -10,6 +10,7 @@ function registerSocket(io) {
     const payload = token ? verifyToken(token) : null;
     socket.data.user = payload || null;
     socket.data.name = (payload && payload.username) || null;
+    socket.data.deviceId = (socket.handshake.auth && socket.handshake.auth.deviceId) || null;
 
     socket.on('createRoom', async (data, cb) => {
       try {
@@ -66,6 +67,12 @@ function registerSocket(io) {
     socket.on('submitAnswer', (data, cb) => {
       const res = roomsMgr.submitAnswer(io, socket, data && data.answer);
       cb && cb(res);
+    });
+
+    // مغادرة صريحة (زر «مغادرة الغرفة») — تحرر مكان اللاعب فعليًا، بخلاف انقطاع الاتصال العرَضي.
+    socket.on('leaveTeam', (data, cb) => {
+      roomsMgr.leaveTeam(io, socket);
+      cb && cb({ ok: true });
     });
 
     socket.on('disconnect', () => {

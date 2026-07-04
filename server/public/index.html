@@ -361,7 +361,7 @@
       <label style="display:block; font-size:14px; font-weight:700; margin-bottom:8px; color:#d8d6ee;">كلمة المرور</label>
       <input type="password" value="{{ regPass }}" onInput="{{ setRegPass }}" placeholder="••••••••" style="width:100%; font-family:'Thmanyah Sans',sans-serif; font-size:16px; color:#f1f0ff; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.14); border-radius:14px; padding:14px 16px; margin-bottom:16px; outline:none;" style-focus="border-color:rgba(129,140,248,.7);">
       <label style="display:block; font-size:14px; font-weight:700; margin-bottom:8px; color:#d8d6ee;">تأكيد كلمة المرور</label>
-      <input type="password" placeholder="••••••••" style="width:100%; font-family:'Thmanyah Sans',sans-serif; font-size:16px; color:#f1f0ff; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.14); border-radius:14px; padding:14px 16px; margin-bottom:24px; outline:none;" style-focus="border-color:rgba(129,140,248,.7);">
+      <input type="password" value="{{ regConfirm }}" onInput="{{ setRegConfirm }}" placeholder="••••••••" style="width:100%; font-family:'Thmanyah Sans',sans-serif; font-size:16px; color:#f1f0ff; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.14); border-radius:14px; padding:14px 16px; margin-bottom:24px; outline:none;" style-focus="border-color:rgba(129,140,248,.7);">
       <button onClick="{{ doRegister }}" style="width:100%; font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:17px; color:#fff; background:linear-gradient(135deg,#818cf8,#ec4899); border:none; padding:15px; border-radius:16px; cursor:pointer; box-shadow:0 14px 32px rgba(236,72,153,.45);" style-hover="filter:brightness(1.08);">إنشاء الحساب</button>
     </div>
     </sc-if>
@@ -431,9 +431,12 @@
     </div>
     <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:24px;">
       <sc-for list="{{ lobbyPlayers }}" as="p" hint-placeholder-count="3">
-        <div style="display:flex; align-items:center; gap:12px; padding:12px 14px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); border-radius:14px;">
+        <div style="display:flex; align-items:center; gap:12px; padding:12px 14px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); border-radius:14px; opacity:{{ p.rowOpacity }};">
           <div style="width:40px; height:40px; border-radius:12px; background:{{ p.avatarBg }}; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:15px; color:#1a1300;">{{ p.slotLabel }}</div>
           <div style="flex:1; font-size:16px; font-weight:700;">{{ p.name }}</div>
+          <sc-if value="{{ p.offline }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; align-items:center; gap:5px; font-size:12px; font-weight:700; color:#f87171;"><span style="width:7px; height:7px; border-radius:50%; background:#f87171;"></span>غير متصل</div>
+          </sc-if>
           <div style="font-size:13px; font-weight:700; color:{{ p.roleColor }};">{{ p.roleText }}</div>
         </div>
       </sc-for>
@@ -447,7 +450,7 @@
     <sc-if value="{{ showMemberReady }}" hint-placeholder-val="{{ false }}">
       <div style="text-align:center; font-size:15px; font-weight:800; color:#34d399; padding:16px; background:rgba(52,211,153,.08); border:1px solid rgba(52,211,153,.2); border-radius:14px;">اكتمل الفريق — بانتظار القائد ليبدأ اللعبة</div>
     </sc-if>
-    <button onClick="{{ goHome }}" style="width:100%; margin-top:12px; font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:15px; color:#a9a7cc; background:none; border:none; padding:10px; cursor:pointer;" style-hover="color:#fff;">← مغادرة الغرفة</button>
+    <button onClick="{{ leaveLobby }}" style="width:100%; margin-top:12px; font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:15px; color:#a9a7cc; background:none; border:none; padding:10px; cursor:pointer;" style-hover="color:#fff;">← مغادرة الغرفة</button>
   </div>
 </div>
 </sc-if>
@@ -659,12 +662,12 @@ class Component extends DCLogic {
   state = {
     page: 'home',
     maxPlayers: 3, created: false, roomCode: '',
-    user: null, loginName: '', loginTab: 'login', regName: '', regPass: '',
+    user: null, loginName: '', loginTab: 'login', regName: '', regPass: '', regConfirm: '',
     loading: false, offline: false, joinCode: '', joinName: '',
     elapsed: 0, roundIndex: 0, answer: '', locked: 0, showHint: false, gameScore: 0, hintText: '', hintShown: false, wrongCount: 0,
     role: 'captain',
     // الاتصال بالخادم
-    token: null, connected: false, serverImage: null, lobbyPlayers: [], statusMsg: '',
+    token: null, connected: false, serverImage: null, lobbyPlayers: [], statusMsg: '', deviceId: null,
     // لوحة التحكم
     adminRounds: [], adminStats: null, newHint: '', newAnswers: '', newQuestion: '', newCategory: CATEGORY_LIST[0], adminMsg: '', editingCategoryId: null,
     serverTeams: [], myTeamIndex: null, namingTeam: null, teamNameInput: '', startRequested: false, shareCopied: false, zoomOpen: false, countdown: 0,
@@ -681,6 +684,7 @@ class Component extends DCLogic {
       if (m !== this.state.isMobile) this.setState({ isMobile: m, mobileNavOpen: m ? this.state.mobileNavOpen : false });
     };
     if (typeof window !== 'undefined') { window.addEventListener('resize', this._onResize); this._onResize(); }
+    this.setState({ deviceId: this._deviceId() });
     let token = null, user = null;
     try {
       token = localStorage.getItem('wsl_token');
@@ -689,10 +693,17 @@ class Component extends DCLogic {
     } catch (e) {}
     if (token && user) {
       this.setState({ token, user, credits: (user.credits != null ? user.credits : this.state.credits) }, () => { this.connectSocket(); this.refreshMe(); });
+    } else if (this._loadResume()) {
+      // ضيف كان بمنتصف لوبي فريق قبل ما يقفل المتصفح — نتصل بالسيرفر مباشرة عشان نحاول نرجّعه مكانه.
+      this.connectSocket();
     }
     try {
       const room = new URLSearchParams(window.location.search).get('room');
-      if (room) this.setState({ joinCode: room }, () => this.go('join'));
+      if (room) {
+        this.setState({ joinCode: room }, () => this.go('join'));
+        // ننظّف رابط الغرفة من شريط العنوان حتى لا يرجعنا أي تحديث لاحق للصفحة لشاشة الانضمام من جديد.
+        window.history.replaceState(null, '', window.location.pathname);
+      }
     } catch (e) {}
   }
 
@@ -704,6 +715,23 @@ class Component extends DCLogic {
   }
   _clearSession() {
     try { localStorage.removeItem('wsl_token'); localStorage.removeItem('wsl_user'); } catch (e) {}
+  }
+  // معرّف جهاز/متصفح ثابت (يبقى بعد إغلاق المتصفح) — يُستخدم لاسترجاع نفس مكان اللاعب بالفريق بعد انقطاع الاتصال.
+  _deviceId() {
+    try {
+      let id = localStorage.getItem('wsl_device_id');
+      if (!id) { id = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10); localStorage.setItem('wsl_device_id', id); }
+      return id;
+    } catch (e) { return this.state.deviceId || null; }
+  }
+  _saveResume(roomCode, teamIndex, teamName, name) {
+    try { localStorage.setItem('wsl_resume', JSON.stringify({ roomCode, teamIndex, teamName, name })); } catch (e) {}
+  }
+  _loadResume() {
+    try { return JSON.parse(localStorage.getItem('wsl_resume') || 'null'); } catch (e) { return null; }
+  }
+  _clearResume() {
+    try { localStorage.removeItem('wsl_resume'); } catch (e) {}
   }
   refreshMe() {
     if (!this.state.token) return;
@@ -788,11 +816,41 @@ class Component extends DCLogic {
     const teamName = asCaptain ? ((this.state.teamNameInput || '').trim() || ('فريق ' + arNum(i + 1))) : undefined;
     if (this.serverConnected) {
       this._socket.emit('chooseTeam', { roomCode: this.state.roomCode, teamIndex: i, teamName, name }, (res) => {
-        if (res && res.ok) {
-          this.setState({ myTeamIndex: res.teamIndex, role: res.isCaptain ? 'captain' : 'member', serverTeams: res.teams || this.state.serverTeams, namingTeam: null, startRequested: false, statusMsg: '' }, () => { this.go('lobby'); this.maybeAutoStart(); });
-        } else { this.setState({ statusMsg: (res && res.error) || 'تعذّر الانضمام للفريق' }); }
+        if (res && res.ok) this._onTeamJoined(res, teamName, name);
+        else { this.setState({ statusMsg: (res && res.error) || 'تعذّر الانضمام للفريق' }); }
       });
     } else { this._chooseTeamLocal(i, asCaptain, name, teamName); }
+  }
+  // بعد انضمام ناجح (أو استرجاع مكان بعد انقطاع اتصال) — يحفظ بيانات الاسترجاع وينقل لشاشة اللوبي أو اللعبة حسب حالة الفريق.
+  _onTeamJoined(res, teamName, name) {
+    this._saveResume(this.state.roomCode, res.teamIndex, teamName, name);
+    if (res.started) {
+      this.stopTimer(); this.stopPenalty();
+      this.setState({
+        myTeamIndex: res.teamIndex, role: res.isCaptain ? 'captain' : 'member', serverTeams: res.teams || this.state.serverTeams,
+        namingTeam: null, startRequested: false, statusMsg: '', page: 'game',
+        roundIndex: res.roundIndex || 0, gameScore: res.score || 0, elapsed: res.elapsed || 0, locked: res.lockedSeconds || 0,
+        hintShown: false, hintText: '', wrongCount: 0, countdown: 0,
+      });
+    } else {
+      this.setState({ myTeamIndex: res.teamIndex, role: res.isCaptain ? 'captain' : 'member', serverTeams: res.teams || this.state.serverTeams, namingTeam: null, startRequested: false, statusMsg: '' }, () => { this.go('lobby'); this.maybeAutoStart(); });
+    }
+  }
+  // يحاول يسترجع مكان اللاعب بفريقه بعد إعادة اتصال (تحديث صفحة، إغلاق/فتح المتصفح...) لو عنده بيانات محفوظة.
+  _tryResume() {
+    if (this.state.myTeamIndex != null) return;
+    const r = this._loadResume();
+    if (!r || !r.roomCode) return;
+    this._socket.emit('chooseTeam', { roomCode: r.roomCode, teamIndex: r.teamIndex, teamName: r.teamName, name: r.name }, (res) => {
+      if (res && res.ok) this.setState({ roomCode: r.roomCode }, () => this._onTeamJoined(res, r.teamName, r.name));
+      else this._clearResume();
+    });
+  }
+  // مغادرة صريحة للوبي — تحرر مكان اللاعب فعليًا وتمسح بيانات الاسترجاع.
+  leaveLobby() {
+    if (this.serverConnected) this._socket.emit('leaveTeam', {}, () => {});
+    this._clearResume();
+    this.setState({ myTeamIndex: null, role: null }, () => this.go('home'));
   }
   _chooseTeamLocal(i, asCaptain, name, teamName) {
     const teams = (this.state.serverTeams || []).map(t => ({ ...t, players: (t.players || []).slice() }));
@@ -837,9 +895,9 @@ class Component extends DCLogic {
   connectSocket() {
     if (this._socket || typeof window === 'undefined' || !window.io) return this._socket;
     const base = this.apiBase();
-    const s = window.io(base, { auth: { token: this.state.token }, timeout: 4000, reconnection: true });
+    const s = window.io(base, { auth: { token: this.state.token, deviceId: this.state.deviceId || this._deviceId() }, timeout: 4000, reconnection: true });
     this._socket = s;
-    s.on('connect', () => this.setState({ connected: true }));
+    s.on('connect', () => { this.setState({ connected: true }); this._tryResume(); });
     s.on('disconnect', () => this.setState({ connected: false }));
     s.on('lobby', (p) => this.setState({ serverTeams: p.teams || [], roomCode: p.roomCode || this.state.roomCode }, () => this.maybeAutoStart()));
     s.on('gameStarted', (st) => { this.stopTimer(); this.setState({ page: 'game', roundIndex: st.roundIndex, gameScore: st.score, elapsed: st.elapsed, hintShown: false, hintText: '', wrongCount: 0, countdown: 3 }, () => this.startCountdown()); });
@@ -848,7 +906,7 @@ class Component extends DCLogic {
     s.on('correct', () => this.setState({ answer: '', showHint: false }));
     s.on('hint', (d) => this.setState({ hintText: (d && d.text) || '', hintShown: !!(d && d.text) }));
     s.on('locked', (d) => this.setState({ locked: d.lockedSeconds, answer: '' }));
-    s.on('finished', (d) => { this.stopTimer(); this.setState({ page: 'results', gameScore: d.score, serverResults: (d.results && d.results.teams) || this.state.serverResults, serverTotal: (d.results && d.results.totalRounds) || this.state.serverTotal }); this.refreshMe(); });
+    s.on('finished', (d) => { this.stopTimer(); this._clearResume(); this.setState({ page: 'results', gameScore: d.score, serverResults: (d.results && d.results.teams) || this.state.serverResults, serverTotal: (d.results && d.results.totalRounds) || this.state.serverTotal }); this.refreshMe(); });
     s.on('roomResults', (d) => this.setState({ serverResults: (d && d.teams) || [], serverTotal: (d && d.totalRounds) || this.state.serverTotal }));
     return s;
   }
@@ -936,6 +994,7 @@ class Component extends DCLogic {
   setLoginName(e) { this.setState({ loginName: e.target.value }); }
   setRegName(e) { this.setState({ regName: e.target.value }); }
   setRegPass(e) { this.setState({ regPass: e.target.value }); }
+  setRegConfirm(e) { this.setState({ regConfirm: e.target.value }); }
   async doLogin() {
     const username = (this.state.loginName || '').trim();
     if (!username) { this.setState({ authErr: 'أدخل اسم المستخدم' }); return; }
@@ -951,10 +1010,13 @@ class Component extends DCLogic {
   async doRegister() {
     const username = (this.state.regName || '').trim();
     if (!username) { this.setState({ authErr: 'أدخل الاسم' }); return; }
+    const password = this.state.regPass || '';
+    if (password.length < 6) { this.setState({ authErr: 'كلمة المرور قصيرة جدًا (6 أحرف على الأقل)' }); return; }
+    if (password !== (this.state.regConfirm || '')) { this.setState({ authErr: 'كلمتا المرور غير متطابقتين' }); return; }
     try {
-      const { token, user } = await this.api('/api/auth/register', { method: 'POST', body: JSON.stringify({ username, password: this.state.regPass || '' }) });
+      const { token, user } = await this.api('/api/auth/register', { method: 'POST', body: JSON.stringify({ username, password }) });
       this._saveSession(token, user);
-      this.setState({ token, user, authErr: '', regPass: '', credits: (user.credits != null ? user.credits : this.state.credits) }, () => this.connectSocket());
+      this.setState({ token, user, authErr: '', regPass: '', regConfirm: '', credits: (user.credits != null ? user.credits : this.state.credits) }, () => this.connectSocket());
       this.go('home');
     } catch (e) {
       this.setState({ authErr: this._errText(e) });
@@ -1192,6 +1254,7 @@ class Component extends DCLogic {
 
     return {
       goHome: () => this.go('home'), goCreate: () => this.go('create'), goHow: () => this.go('how'), goAbout: () => this.go('about'),
+      leaveLobby: () => this.leaveLobby(),
       goLogin: () => this.go('login'), goJoin: () => this.go('join'), goGame: () => this.go('game'),
       isHome: page === 'home', isCreate: page === 'create', isHow: page === 'how', isAbout: page === 'about',
       isLogin: page === 'login', isJoin: page === 'join', isGame: page === 'game', isResults: page === 'results', notGame: page !== 'game',
@@ -1237,6 +1300,8 @@ class Component extends DCLogic {
         roleText: p.isCaptain ? 'قائد' : 'عضو',
         roleColor: p.isCaptain ? '#fbbf24' : '#a9a7cc',
         avatarBg: p.isCaptain ? 'linear-gradient(135deg,#fbbf24,#f59e0b)' : 'rgba(255,255,255,.1)',
+        offline: p.connected === false,
+        rowOpacity: p.connected === false ? '.55' : '1',
       })),
       lobbyCount: arNum(myCount), lobbyMax: '٣',
       iAmCaptain: this.state.role === 'captain',
@@ -1321,6 +1386,7 @@ class Component extends DCLogic {
       regTabCol: this.state.loginTab === 'register' ? '#fff' : '#a9a7cc',
       regName: this.state.regName, setRegName: (e) => this.setRegName(e),
       regPass: this.state.regPass, setRegPass: (e) => this.setRegPass(e), doRegister: () => this.doRegister(),
+      regConfirm: this.state.regConfirm, setRegConfirm: (e) => this.setRegConfirm(e),
       joinCode: this.state.joinCode, setJoinCode: (e) => this.setJoinCode(e), doJoin: () => this.doJoin(),
       joinName: this.state.joinName, setJoinName: (e) => this.setJoinName(e),
       playerOptions,
