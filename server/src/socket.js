@@ -75,6 +75,12 @@ function registerSocket(io) {
       cb && cb({ ok: true });
     });
 
+    // القائد يطرد عضوًا من فريقه قبل بدء اللعبة.
+    socket.on('kickPlayer', (data, cb) => {
+      const res = roomsMgr.kickPlayer(io, socket, data || {});
+      cb && cb(res);
+    });
+
     socket.on('disconnect', () => {
       roomsMgr.leave(io, socket);
     });

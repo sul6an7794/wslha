@@ -70,5 +70,11 @@
   window.addEventListener('resize', scan);
   document.addEventListener('input', scan, true);
   document.addEventListener('focusin', scan, true);
+  // فتح/إغلاق لوحة مفاتيح الجوال يغيّر visualViewport بدون ما يطلق دائمًا حدث resize على window،
+  // فكانت الأيقونة تتأخر أو "تقفز" لحد ما يجي أول تحديث دوري. نتابع visualViewport مباشرة لتحديث فوري.
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', scan);
+    window.visualViewport.addEventListener('scroll', scan);
+  }
   scan();
 })();

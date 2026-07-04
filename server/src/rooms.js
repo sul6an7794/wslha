@@ -31,7 +31,8 @@ function makeTeam(index) {
   return {
     index,
     name: '',
-    players: [], // { socketId, name, isCaptain }
+    players: [], // { id, socketId, name, isCaptain }
+    nextPlayerId: 1, // معرّف ثابت لكل لاعب داخل الفريق (يبقى نفسه حتى بعد استرجاع مكانه بعد انقطاع)
     roundIndex: 0,
     score: 0,
     elapsed: 0,
@@ -74,7 +75,7 @@ function teamSummary(room) {
     max: TEAM_SIZE,
     full: t.players.length >= TEAM_SIZE,
     started: t.started,
-    players: t.players.map((p) => ({ name: p.name, isCaptain: p.isCaptain, connected: p.connected !== false })),
+    players: t.players.map((p) => ({ id: p.id, name: p.name, isCaptain: p.isCaptain, connected: p.connected !== false })),
   }));
 }
 
@@ -151,7 +152,8 @@ function chooseTeam(io, socket, { roomCode, teamIndex, teamName, name }) {
 
   const isCaptain = team.players.length === 0;
   if (isCaptain) team.name = (teamName || '').trim() || 'فريق ' + (team.index + 1);
-  team.players.push({ socketId: socket.id, name: name || 'لاعب', isCaptain, deviceId, connected: true });
+  const id = team.nextPlayerId++;
+  team.players.push({ id, socketId: socket.id, name: name || 'لاعب', isCaptain, deviceId, connected: true });
 
   socket.join(room.code);
   socket.join(room.code + ':' + team.index);
@@ -244,14 +246,18 @@ function submitAnswer(io, socket, answer) {
   if (!round) return { error: 'لا توجد جولة حالية' };
 
   const ans = String(answer || '').trim().toLowerCase();
+  // مطابقة جزئية مسموحة فقط لو الجزء الأقصر يغطي أغلب الكلمة (يمنع قبول حرف أو حرفين بالخطأ كإجابة صحيحة).
+  const fuzzyMatch = (a, b) => {
+    if (a === b) return true;
+    const shorter = a.length <= b.length ? a : b;
+    const longer = a.length <= b.length ? b : a;
+    if (shorter.length < 2) return false;
+    return longer.includes(shorter) && shorter.length >= longer.length * 0.6;
+  };
   const ok =
     round.answers.length === 0
-      ? !!ans
-      : !!ans &&
-        round.answers.some((a) => {
-          const al = String(a).trim().toLowerCase();
-          return al === ans || al.includes(ans) || ans.includes(al);
-        });
+      ? ans.length >= 2
+      : ans.length >= 2 && round.answers.some((a) => fuzzyMatch(String(a).trim().toLowerCase(), ans));
 
   const teamChannel = room.code + ':' + team.index;
 
@@ -357,6 +363,25 @@ function leaveTeam(io, socket) {
   socket.data.teamIndex = null;
 }
 
+// القائد يطرد عضوًا من فريقه قبل بدء اللعبة فقط. يعيد { ok } أو { error }.
+function kickPlayer(io, socket, { playerId }) {
+  const code = socket.data.roomCode;
+  if (!code) return { error: 'لست داخل غرفة' };
+  const room = getRoom(code);
+  if (!room) return { error: 'لم يتم العثور على الغرفة' };
+  const idx = socket.data.teamIndex;
+  if (idx == null || !room.teams[idx]) return { error: 'لم يتم العثور على الفريق' };
+  const team = room.teams[idx];
+  if (socket.id !== getCaptainSocketId(team)) return { error: 'القائد فقط يقدر يطرد لاعبين' };
+  if (team.started) return { error: 'ما تقدر تطرد لاعب بعد بدء اللعبة' };
+  const target = team.players.find((p) => p.id === Number(playerId));
+  if (!target) return { error: 'اللاعب غير موجود' };
+  if (target.isCaptain) return { error: 'ما تقدر تطرد نفسك — استخدم مغادرة الغرفة' };
+  if (target.connected !== false) io.to(target.socketId).emit('kicked', {});
+  removePlayerFromTeam(io, room, team, target.socketId);
+  return { ok: true };
+}
+
 function getActiveRoomsStats() {
   let totalPlayers = 0;
   for (const r of rooms.values()) {
@@ -374,6 +399,7 @@ module.exports = {
   submitAnswer,
   leave,
   leaveTeam,
+  kickPlayer,
   getRoom,
   getActiveRoomsStats,
 };
