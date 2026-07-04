@@ -38,7 +38,9 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(cors());
+// أمان: نحصر CORS على أصل الموقع الفعلي بدل السماح لأي موقع (*) بمناداة الـAPI.
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://wslha.app';
+app.use(cors({ origin: ALLOWED_ORIGIN }));
 app.use(express.json({ limit: '1mb' }));
 
 // الواجهة (ملف HTML المستقل) تُخدَّم من نفس السيرفر — نشر كخدمة واحدة، وبدون مشاكل CORS.
@@ -87,7 +89,7 @@ async function start() {
   await seedDefaults(); // يضيف الجولات الافتراضية فقط لو ما فيه أي جولات
 
   const server = http.createServer(app);
-  const io = new Server(server, { cors: { origin: '*' } });
+  const io = new Server(server, { cors: { origin: ALLOWED_ORIGIN } });
   registerSocket(io);
 
   server.listen(PORT, () => {
