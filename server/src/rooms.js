@@ -246,13 +246,13 @@ function submitAnswer(io, socket, answer) {
   if (!round) return { error: 'لا توجد جولة حالية' };
 
   const ans = String(answer || '').trim().toLowerCase();
-  // مطابقة جزئية مسموحة فقط لو الجزء الأقصر يغطي أغلب الكلمة (يمنع قبول حرف أو حرفين بالخطأ كإجابة صحيحة).
+  // مطابقة جزئية مسموحة فقط لو الجزء الأقصر يغطي 80% على الأقل من الكلمة (يمنع قبول إجابة قصيرة أو ناقصة كإجابة صحيحة).
   const fuzzyMatch = (a, b) => {
     if (a === b) return true;
     const shorter = a.length <= b.length ? a : b;
     const longer = a.length <= b.length ? b : a;
     if (shorter.length < 2) return false;
-    return longer.includes(shorter) && shorter.length >= longer.length * 0.6;
+    return longer.includes(shorter) && shorter.length >= longer.length * 0.8;
   };
   const ok =
     round.answers.length === 0

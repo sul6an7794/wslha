@@ -3,6 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<title>وصّلها — اشرحها صح... ولا تضيعهم</title>
+<meta name="description" content="لعبة الفريق الأولى للوصف السريع. ثلاث لاعبين، ثلاث صور مختلفة، نقاش واحد يوصلكم للإجابة — غلطة وحدة توقفكم ١٥ ثانية.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://wslha.app/">
+<meta property="og:title" content="وصّلها — اشرحها صح... ولا تضيعهم">
+<meta property="og:description" content="لعبة الفريق الأولى للوصف السريع. ثلاث لاعبين، ثلاث صور مختلفة، نقاش واحد يوصلكم للإجابة — غلطة وحدة توقفكم ١٥ ثانية.">
+<meta property="og:image" content="https://wslha.app/logo-icon.png">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="وصّلها — اشرحها صح... ولا تضيعهم">
+<meta name="twitter:description" content="لعبة الفريق الأولى للوصف السريع. ثلاث لاعبين، ثلاث صور مختلفة، نقاش واحد يوصلكم للإجابة.">
+<meta name="twitter:image" content="https://wslha.app/logo-icon.png">
 <script src="./support.js"></script>
 </head>
 <body>
@@ -254,7 +265,7 @@
       <p style="font-size:12px; color:#fbbf24; margin:0 0 22px;">تعذّر الاتصال بالخادم — تم توليد كود تجريبي محلياً</p>
     </sc-if>
     <div style="font-size:48px; font-weight:900; letter-spacing:10px; color:#c4b5fd; margin:18px 0;">{{ roomCode }}</div>
-    <img src="{{ qrSrc }}" alt="QR" width="190" height="190" loading="lazy" style="background:#fff; border-radius:12px; padding:8px; margin-bottom:24px; display:inline-block;">
+    <img src="{{ qrSrc }}" alt="QR" width="190" height="190" loading="lazy" style="background:#15122e; border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:8px; margin-bottom:24px; display:inline-block;">
     <div style="text-align:right; margin-bottom:20px;">
       <div style="font-size:13px; font-weight:700; color:#d8d6ee; margin-bottom:8px;">رابط المشاركة</div>
       <div style="display:flex; gap:8px;">
@@ -1401,7 +1412,7 @@ class Component extends DCLogic {
       creating: this.state.loading, createLabel: this.state.loading ? 'جاري الإنشاء…' : 'إنشاء الغرفة',
       offline: this.state.offline,
       created: this.state.created, notCreated: !this.state.created,
-      roomCode: arNum(this.state.roomCode), qrCells: this.qrCells(), qrSrc: 'https://api.qrserver.com/v1/create-qr-code/?size=190x190&margin=6&data=' + encodeURIComponent(this.shareUrl()),
+      roomCode: arNum(this.state.roomCode), qrCells: this.qrCells(), qrSrc: 'https://api.qrserver.com/v1/create-qr-code/?size=190x190&margin=6&bgcolor=15122e&color=f1f0ff&data=' + encodeURIComponent(this.shareUrl()),
       shareUrl: this.shareUrl(), copyShare: () => this.copyShare(),
       shareBtnLabel: this.state.shareCopied ? 'تم النسخ' : 'نسخ الرابط',
       elapsedDisplay, roundNumber: arNum(ri + 1), roundTotal: arNum(total), hintShown: this.state.hintShown, hintText: this.state.hintText || '',
