@@ -4,7 +4,8 @@ const path = require('path');
 // التخزين: الحالة تُحفظ في الذاكرة (state) للقراءة المتزامنة السريعة، والكتابة تتم
 // بشكل **ذري لكل عنصر** (مستند مستقل لكل مستخدم/جولة/صورة) — فلا يوجد "حفظ للكل"
 // يمكن أن يدوس على البيانات. يمنع فقدان البيانات نهائيًا.
-const DATA_PATH = path.join(__dirname, '..', 'data.json');
+// يقبل مسار بديل عبر متغيّر بيئة (تستخدمه الاختبارات الآلية حتى لا تلمس ملف البيانات الحقيقي).
+const DATA_PATH = process.env.WSL_DATA_PATH || path.join(__dirname, '..', 'data.json');
 const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
 const STARTING_CREDITS = 1; // رصيد البداية لكل حساب جديد: تذكرة مجانية واحدة
 

@@ -10,6 +10,8 @@ const { seedDefaults } = require('./seed');
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const { registerSocket } = require('./socket');
+const { rateLimit } = require('./rateLimit');
+const { sweepAbandonedRooms } = require('./rooms');
 
 const app = express();
 // خلف بروكسي (Render/Railway) — يخلي req.protocol = https حتى تطلع روابط الصور بـ https وما تنكسر بصفحة https.
@@ -21,7 +23,11 @@ const CSP = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://cdn.socket.io https://cdnjs.cloudflare.com https://unpkg.com",
+  // ملاحظة أمان: 'unsafe-eval' لازم لأن محرّك الواجهة (support.js) يشغّل منطق المكوّن عبر new Function(...)
+  // (الكود مخزَّن كنص داخل <script type="text/x-dc"> غير قابل للتنفيذ المباشر من المتصفح، ثم يُترجم وقت التشغيل).
+  // 'unsafe-inline' مو لازمة لأي script-src فعليًا: كل الأحداث onClick/onInput مربوطة عبر {{ }} وتتحوّل لمعالجات
+  // React حقيقية، مو سمات HTML خام، وكل ملفات الجافاسكربت خارجية (src=) — تأكدنا بالفحص المباشر.
+  "script-src 'self' 'unsafe-eval' blob: https://cdn.socket.io https://cdnjs.cloudflare.com https://unpkg.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com data:",
   "img-src 'self' data: blob: https:",
@@ -50,6 +56,8 @@ app.use(express.static(publicDir));
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 app.get('/health', (req, res) => res.json({ ok: true }));
+// حد عام واسع لكل نقاط /api كطبقة أمان إضافية (فوق الحدود الأضيق الخاصة بالدخول/التسجيل والإدارة).
+app.use('/api', rateLimit(300, 5 * 60 * 1000, 'api'));
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 
@@ -91,6 +99,10 @@ async function start() {
   const server = http.createServer(app);
   const io = new Server(server, { cors: { origin: ALLOWED_ORIGIN } });
   registerSocket(io);
+
+  // تنظيف دوري للغرف المهجورة (كل لاعبيها غير متصلين لمدة طويلة) — يمنع تراكمها بالذاكرة للأبد.
+  const roomSweepTimer = setInterval(sweepAbandonedRooms, 5 * 60 * 1000);
+  if (roomSweepTimer.unref) roomSweepTimer.unref();
 
   server.listen(PORT, () => {
     console.log('Team Quest server running on http://localhost:' + PORT);

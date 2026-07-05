@@ -5,6 +5,9 @@ const rooms = new Map(); // roomCode -> room
 
 const ALLOWED_SIZES = [3, 6, 9, 12, 15];
 const TEAM_SIZE = 3;
+const ABANDONED_GRACE_MS = 20 * 60 * 1000; // 20 دقيقة بدون أي لاعب متصل قبل ما نحذف الغرفة نهائيًا
+
+function touch(room) { room.lastActivityAt = Date.now(); }
 
 function genCode() {
   let code;
@@ -56,6 +59,7 @@ function createRoom(io, socket, { maxPlayers }) {
     teams: Array.from({ length: numTeams }, (_, i) => makeTeam(i)),
     rounds: loadPlayableRounds(),
     results: [], // نتائج الفرق المنتهية داخل هذه الغرفة
+    lastActivityAt: Date.now(),
   };
   rooms.set(code, room);
   socket.join(code);
@@ -113,6 +117,7 @@ function chooseTeam(io, socket, { roomCode, teamIndex, teamName, name }) {
   const team = room.teams[Number(teamIndex)];
   if (!team) return { error: 'فريق غير موجود' };
 
+  touch(room);
   const deviceId = socket.data.deviceId;
   const ghost = deviceId ? team.players.find((p) => p.deviceId === deviceId && p.connected === false) : null;
   if (ghost) {
@@ -196,6 +201,7 @@ function getTeamForSocket(socket) {
 function startGame(io, socket) {
   const { room, team } = getTeamForSocket(socket);
   if (!room || !team) return { ok: false, error: 'لم يتم العثور على الفريق' };
+  touch(room);
   if (team.started) return { ok: true };
   if (team.players.length < TEAM_SIZE) {
     return { ok: false, error: 'الفريق غير مكتمل — يحتاج ' + TEAM_SIZE + ' لاعبين لبدء اللعبة' };
@@ -225,6 +231,7 @@ function startGame(io, socket) {
       lockedSeconds: team.locked,
     });
   }, 1000);
+  if (team.timer.unref) team.timer.unref(); // ما يمنع خروج العملية (مفيد بالاختبارات الآلية، بدون أي أثر بالتشغيل العادي)
   return { ok: true };
 }
 
@@ -236,6 +243,7 @@ function getCaptainSocketId(team) {
 function submitAnswer(io, socket, answer) {
   const { room, team } = getTeamForSocket(socket);
   if (!room || !team) return { error: 'لم يتم العثور على الفريق' };
+  touch(room);
   if (socket.id !== getCaptainSocketId(team)) {
     return { error: 'القائد فقط يرسل الإجابة' };
   }
@@ -294,6 +302,7 @@ function submitAnswer(io, socket, answer) {
       if (team.wrongCount >= 3 && round.hint) io.to(teamChannel).emit('hint', { text: round.hint });
     }
   }, 1000);
+  if (team.lockTimer.unref) team.lockTimer.unref();
   return { ok: true, correct: false, lockedSeconds: team.locked };
 }
 
@@ -344,6 +353,7 @@ function leave(io, socket) {
 
   if (!team.started) {
     player.connected = false;
+    touch(room); // نبدأ عدّاد السماح من لحظة الانقطاع نفسها (مو من آخر نشاط أقدم)
     broadcastLobby(io, room);
     return;
   }
@@ -382,6 +392,23 @@ function kickPlayer(io, socket, { playerId }) {
   return { ok: true };
 }
 
+// تنظيف دوري للغرف "المهجورة": كل لاعبيها غير متصلين (حتى لو ما زالوا محجوزين بمصفوفة اللاعبين
+// بفضل ميزة عدم الطرد الفوري)، ومر عليها وقت سماح كافٍ بدون أي نشاط. يمنع تراكم غرف بالذاكرة للأبد.
+function sweepAbandonedRooms() {
+  const now = Date.now();
+  for (const [code, room] of rooms) {
+    const hasConnected = room.teams.some((t) => t.players.some((p) => p.connected !== false));
+    if (hasConnected) continue;
+    const idleFor = now - (room.lastActivityAt || 0);
+    if (idleFor < ABANDONED_GRACE_MS) continue;
+    room.teams.forEach((t) => {
+      clearInterval(t.timer);
+      clearInterval(t.lockTimer);
+    });
+    rooms.delete(code);
+  }
+}
+
 function getActiveRoomsStats() {
   let totalPlayers = 0;
   for (const r of rooms.values()) {
@@ -402,4 +429,5 @@ module.exports = {
   kickPlayer,
   getRoom,
   getActiveRoomsStats,
+  sweepAbandonedRooms,
 };

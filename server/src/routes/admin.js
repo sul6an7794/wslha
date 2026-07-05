@@ -6,8 +6,12 @@ const db = require('../db');
 const { authMiddleware, adminMiddleware } = require('../auth');
 const { getActiveRoomsStats } = require('../rooms');
 const { compressImage } = require('../images');
+const { rateLimit } = require('../rateLimit');
 
-router.use(authMiddleware, adminMiddleware);
+const adminLimit = rateLimit(120, 60 * 1000, 'admin'); // 120 طلب بالدقيقة لكل IP — كافٍ للاستخدام العادي، يمنع إساءة الاستخدام
+const uploadLimit = rateLimit(30, 5 * 60 * 1000, 'admin-upload'); // رفع الصور أثقل، حد أضيق له
+
+router.use(adminLimit, authMiddleware, adminMiddleware);
 
 function toApiRound(r) {
   return {
@@ -73,7 +77,7 @@ const upload = multer({
   },
 });
 
-router.post('/rounds/:id/images', (req, res) => {
+router.post('/rounds/:id/images', uploadLimit, (req, res) => {
   upload.array('images', 12)(req, res, async (err) => {
     if (err) {
       const msg =

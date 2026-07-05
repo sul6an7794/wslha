@@ -2,41 +2,17 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { hashPassword, verifyPassword, signToken, authMiddleware, setAuthCookie, clearAuthCookie } = require('../auth');
+const { rateLimit } = require('../rateLimit');
 
 // تمثيل عام للمستخدم (بدون كلمة المرور) — يُرسل للواجهة.
 function publicUser(u) {
   return { id: u.id, username: u.username, isAdmin: !!u.is_admin, credits: u.credits || 0 };
 }
 
-// تحديد معدّل بسيط في الذاكرة ضد التخمين (brute-force) على الدخول/التسجيل.
-const hits = new Map(); // ip -> { count, resetAt }
 // اسم المستخدم: حروف/أرقام/مسافة/_ . - فقط (يمنع رموز XSS مثل < > " ').
 const NAME_RE = /^[\p{L}\p{N} _.-]{2,40}$/u;
-function rateLimit(max, windowMs) {
-  return (req, res, next) => {
-    // نعتمد عنوان Cloudflare الحقيقي (لا يُزوَّر) بدل X-Forwarded-For القابل للتزوير.
-    const ip = req.headers['cf-connecting-ip'] || req.ip || req.socket.remoteAddress || 'unknown';
-    const now = Date.now();
-    let rec = hits.get(ip);
-    if (!rec || now > rec.resetAt) {
-      rec = { count: 0, resetAt: now + windowMs };
-      hits.set(ip, rec);
-    }
-    rec.count += 1;
-    if (rec.count > max) {
-      const secs = Math.ceil((rec.resetAt - now) / 1000);
-      return res.status(429).json({ error: 'محاولات كثيرة، حاول بعد ' + secs + ' ثانية' });
-    }
-    next();
-  };
-}
-// تنظيف دوري للذاكرة
-setInterval(() => {
-  const now = Date.now();
-  for (const [ip, rec] of hits) if (now > rec.resetAt) hits.delete(ip);
-}, 10 * 60 * 1000).unref();
-
-const authLimit = rateLimit(20, 5 * 60 * 1000); // 20 محاولة كل 5 دقائق لكل IP
+const authLimit = rateLimit(20, 5 * 60 * 1000, 'auth'); // 20 محاولة كل 5 دقائق لكل IP — ضد تخمين كلمة المرور
+const profileLimit = rateLimit(30, 5 * 60 * 1000, 'profile');
 
 router.post('/register', authLimit, async (req, res) => {
   const { username, password } = req.body || {};
@@ -88,7 +64,7 @@ router.get('/me', authMiddleware, (req, res) => {
 });
 
 // تعديل الملف الشخصي: تغيير الاسم و/أو كلمة المرور.
-router.patch('/profile', authMiddleware, async (req, res) => {
+router.patch('/profile', profileLimit, authMiddleware, async (req, res) => {
   const user = db.getUserById(req.user.id);
   if (!user) return res.status(404).json({ error: 'الحساب غير موجود' });
 
