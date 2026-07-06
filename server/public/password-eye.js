@@ -1,7 +1,9 @@
 /*
  * أيقونة معاينة كلمة المرور 👁️ — تُضاف تلقائيًا لكل حقول <input type="password">.
- * طبقة مستقلة تصمد مع إعادة رسم التطبيق: الأزرار تعيش في <body> وتُوضع فوق الحقول
- * بإحداثيات fixed، وتُحدَّث دوريًا. RTL: الأيقونة على يسار الحقل.
+ * الزر عنصر حقيقي داخل غلاف position:relative يحيط بالحقل مباشرة (لا موضع fixed
+ * محسوب بالجافاسكربت) — فيتحرّك مع الحقل ضمن نفس عملية الرسم الطبيعية للمتصفح
+ * أثناء السكرول، بدون أي تأخر ممكن مع أي طبقة JS. RTL: الأيقونة على يسار الحقل
+ * (inset-inline-end يطابق padding-inline-end المحجوز).
  */
 (function () {
   'use strict';
@@ -11,13 +13,13 @@
 
   var style = document.createElement('style');
   style.textContent =
-    '.wsl-eye{position:fixed;z-index:100000;width:30px;height:30px;display:flex;align-items:center;justify-content:center;' +
-    'background:transparent;border:none;padding:0;margin:0;cursor:pointer;color:#a9a7cc;border-radius:8px}' +
+    '.wsl-eye-wrap{position:relative;display:block}' +
+    '.wsl-eye{position:absolute;top:50%;inset-inline-end:6px;transform:translateY(-50%);z-index:10;width:30px;height:30px;' +
+    'display:flex;align-items:center;justify-content:center;background:transparent;border:none;padding:0;margin:0;' +
+    'cursor:pointer;color:#a9a7cc;border-radius:8px}' +
     '.wsl-eye:hover{color:#c4b5fd;background:rgba(255,255,255,.06)}' +
-    'input[data-wsl-eye]{padding-inline-end:40px !important}';
+    'input[data-wsl-eye]{padding-inline-end:40px !important;width:100% !important}';
   (document.head || document.documentElement).appendChild(style);
-
-  var pairs = []; // { inp, btn }
 
   function makeBtn(inp) {
     var btn = document.createElement('button');
@@ -35,42 +37,40 @@
       btn.innerHTML = shown ? EYE : EYE_OFF;
       inp.focus();
     });
-    document.body.appendChild(btn);
     return btn;
   }
 
-  function place(inp, btn) {
-    var r = inp.getBoundingClientRect();
-    if (!inp.isConnected || r.width === 0 || r.height === 0) { btn.style.display = 'none'; return; }
-    btn.style.display = 'flex';
-    btn.style.left = (r.left + 6) + 'px';               // يسار الحقل (RTL)
-    btn.style.top = (r.top + (r.height - 30) / 2) + 'px';
+  // يغلّف الحقل بغلاف relative ويحط الزر جواه — يحافظ على flex/min-width
+  // لو الحقل كان عنصر flex (صف كلمة مرور + زر حفظ) وعلى الامتداد الطبيعي غير كذا.
+  function wrapInput(inp) {
+    var wrap = document.createElement('span');
+    wrap.className = 'wsl-eye-wrap';
+    var cs = getComputedStyle(inp);
+    if (cs.flexGrow !== '0' || inp.style.flex) wrap.style.flex = inp.style.flex || '1 1 auto';
+    if (inp.style.minWidth) wrap.style.minWidth = inp.style.minWidth;
+    inp.parentNode.insertBefore(wrap, inp);
+    wrap.appendChild(inp);
+    inp.setAttribute('data-wsl-eye', '0');
+    wrap.appendChild(makeBtn(inp));
   }
 
   function scan() {
-    // حقول جديدة
+    // حقول جديدة (أو رجعت بدون غلافها بعد إعادة رسم التطبيق)
     var news = document.querySelectorAll('input[type="password"]:not([data-wsl-eye])');
-    for (var i = 0; i < news.length; i++) {
-      var inp = news[i];
-      inp.setAttribute('data-wsl-eye', '0');
-      pairs.push({ inp: inp, btn: makeBtn(inp) });
-    }
-    // تحديث الموضع + إعادة تأكيد النوع (لو التطبيق أعاد ضبطه)، وتنظيف المنفصل
-    for (var j = pairs.length - 1; j >= 0; j--) {
-      var p = pairs[j];
-      if (!p.inp.isConnected) { p.btn.remove(); pairs.splice(j, 1); continue; }
-      var want = p.inp.getAttribute('data-wsl-eye') === '1' ? 'text' : 'password';
-      if (p.inp.type !== want) { try { p.inp.type = want; } catch (x) {} }
-      place(p.inp, p.btn);
+    for (var i = 0; i < news.length; i++) wrapInput(news[i]);
+    // إعادة تأكيد النوع (لو التطبيق أعاد ضبطه)
+    var all = document.querySelectorAll('input[data-wsl-eye]');
+    for (var j = 0; j < all.length; j++) {
+      var inp = all[j];
+      var want = inp.getAttribute('data-wsl-eye') === '1' ? 'text' : 'password';
+      if (inp.type !== want) { try { inp.type = want; } catch (x) {} }
     }
   }
 
-  // السحب اللمسي بالجوال يحرّك الحقل كل إطار عبر الـ compositor مباشرة، بينما
-  // أحداث scroll/الفاصل الزمني تتأخر عنه — فكانت الأيقونة "تتحرك"/تنفصل عن
-  // الحقل أثناء السحب وترجع مكانها بعد ما يهدأ التمرير. حلقة requestAnimationFrame
-  // تُعيد الحساب كل إطار فتلغي أي تأخير محسوس.
-  function loop() { scan(); requestAnimationFrame(loop); }
+  // إعادة رسم التطبيق قد تستبدل شجرة DOM حول الحقل (فيفقد غلافه) — نراقب
+  // التغييرات بدل الاعتماد على فاصل زمني، عشان الإصلاح يصير فورًا بلا وميض محسوس.
+  new MutationObserver(scan).observe(document.body, { childList: true, subtree: true });
   document.addEventListener('input', scan, true);
   document.addEventListener('focusin', scan, true);
-  requestAnimationFrame(loop);
+  scan();
 })();
