@@ -65,16 +65,12 @@
     }
   }
 
-  setInterval(scan, 400);
-  window.addEventListener('scroll', scan, true);
-  window.addEventListener('resize', scan);
+  // السحب اللمسي بالجوال يحرّك الحقل كل إطار عبر الـ compositor مباشرة، بينما
+  // أحداث scroll/الفاصل الزمني تتأخر عنه — فكانت الأيقونة "تتحرك"/تنفصل عن
+  // الحقل أثناء السحب وترجع مكانها بعد ما يهدأ التمرير. حلقة requestAnimationFrame
+  // تُعيد الحساب كل إطار فتلغي أي تأخير محسوس.
+  function loop() { scan(); requestAnimationFrame(loop); }
   document.addEventListener('input', scan, true);
   document.addEventListener('focusin', scan, true);
-  // فتح/إغلاق لوحة مفاتيح الجوال يغيّر visualViewport بدون ما يطلق دائمًا حدث resize على window،
-  // فكانت الأيقونة تتأخر أو "تقفز" لحد ما يجي أول تحديث دوري. نتابع visualViewport مباشرة لتحديث فوري.
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', scan);
-    window.visualViewport.addEventListener('scroll', scan);
-  }
-  scan();
+  requestAnimationFrame(loop);
 })();
