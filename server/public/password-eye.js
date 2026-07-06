@@ -14,6 +14,7 @@
   var style = document.createElement('style');
   style.textContent =
     '.wsl-eye-wrap{position:relative;display:block}' +
+    '.wsl-eye-wrap>input{display:block}' +
     '.wsl-eye{position:absolute;top:50%;inset-inline-end:6px;transform:translateY(-50%);z-index:10;width:30px;height:30px;' +
     'display:flex;align-items:center;justify-content:center;background:transparent;border:none;padding:0;margin:0;' +
     'cursor:pointer;color:#a9a7cc;border-radius:8px}' +
