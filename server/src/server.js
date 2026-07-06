@@ -51,6 +51,11 @@ app.use(express.json({ limit: '1mb' }));
 
 // الواجهة (ملف HTML المستقل) تُخدَّم من نفس السيرفر — نشر كخدمة واحدة، وبدون مشاكل CORS.
 const publicDir = path.join(__dirname, '..', 'public');
+// خطوط ثمانية: ملفات ثابتة لا تتغيّر إلا باسم جديد — كاش طويل المدى يمنع طلب
+// إعادة التحقق (revalidation) من السيرفر بكل تحميل صفحة، وهو اللي كان يسبب
+// وميض تبديل الخط عند كل تحديث (font-display ما يفيد لو الخط يوصل متأخر بسبب
+// جولة شبكة revalidation في كل مرة).
+app.use('/fonts', express.static(path.join(publicDir, 'fonts'), { maxAge: '1y', immutable: true }));
 app.use(express.static(publicDir));
 // توافق مع صور قديمة مخزّنة محليًا (إن وُجدت)
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
