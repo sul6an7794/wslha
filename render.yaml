@@ -7,7 +7,10 @@ services:
     # لازم يبقى platform-server بجنب مجلدي wslha-server وmafia بنفس المستوى
     # لأن كوده يطلبهم كمسارات نسبية (../../mafia/server، ../../wslha-server/server).
     rootDir: platform-server
-    buildCommand: npm install
+    # كود platform-server يطلب ملفات مافيا ووصّلها مباشرة (auth.js، rooms.js...)، وهالملفات
+    # تحتاج مكتباتها الخاصة (bcryptjs، jsonwebtoken...) — لازم نثبّتها بمجلديها هما كمان،
+    # مو بس جوا platform-server نفسه، وإلا يفشل التشغيل بخطأ "Cannot find module".
+    buildCommand: npm install --prefix ../wslha-server/server && npm install --prefix ../mafia/server && npm install
     startCommand: npm start
     healthCheckPath: /health
     envVars:
