@@ -9,6 +9,12 @@ const ABANDONED_GRACE_MS = 20 * 60 * 1000; // 20 دقيقة بدون أي لاع
 
 function touch(room) { room.lastActivityAt = Date.now(); }
 
+// أمان: نشيل < > من اسم اللاعب/الفريق حتى لو الواجهة الحالية تعرضها بأمان — طبقة حماية
+// إضافية تمنع حقن HTML لو أي كود مستقبلي عرض الاسم بطريقة غير آمنة (innerHTML مثلًا).
+function sanitizeDisplayName(raw) {
+  return String(raw || '').replace(/[<>]/g, '').trim().slice(0, 30);
+}
+
 function genCode() {
   let code;
   do {
@@ -62,6 +68,7 @@ function createRoom(io, socket, { maxPlayers }) {
     lastActivityAt: Date.now(),
   };
   rooms.set(code, room);
+  if (global.__DOURK_PLATFORM__) global.__DOURK_PLATFORM__.rooms.register(code, 'wslha');
   socket.join(code);
   socket.data.roomCode = code;
   return room;
@@ -117,13 +124,27 @@ function chooseTeam(io, socket, { roomCode, teamIndex, teamName, name }) {
   const team = room.teams[Number(teamIndex)];
   if (!team) return { error: 'فريق غير موجود' };
 
+  const currentRoomCode = socket.data.roomCode;
+  const currentTeamIndex = socket.data.teamIndex;
+  if (currentTeamIndex != null) {
+    if (String(currentRoomCode) !== room.code || Number(currentTeamIndex) !== team.index) {
+      return { error: 'غادر فريقك الحالي قبل الانضمام إلى فريق آخر' };
+    }
+    const currentPlayer = team.players.find((p) => p.socketId === socket.id);
+    if (currentPlayer) {
+      return { ok: true, teamIndex: team.index, isCaptain: currentPlayer.isCaptain, teams: teamSummary(room) };
+    }
+  }
+  if (currentRoomCode && String(currentRoomCode) !== room.code && socket.leave) socket.leave(String(currentRoomCode));
+
   touch(room);
   const deviceId = socket.data.deviceId;
   const ghost = deviceId ? team.players.find((p) => p.deviceId === deviceId && p.connected === false) : null;
   if (ghost) {
     ghost.socketId = socket.id;
     ghost.connected = true;
-    if (name) ghost.name = name;
+    const cleanReclaimName = sanitizeDisplayName(name);
+    if (cleanReclaimName) ghost.name = cleanReclaimName;
     socket.join(room.code);
     socket.join(room.code + ':' + team.index);
     socket.data.roomCode = room.code;
@@ -156,9 +177,9 @@ function chooseTeam(io, socket, { roomCode, teamIndex, teamName, name }) {
   if (team.players.length >= TEAM_SIZE) return { error: 'الفريق مكتمل' };
 
   const isCaptain = team.players.length === 0;
-  if (isCaptain) team.name = (teamName || '').trim() || 'فريق ' + (team.index + 1);
+  if (isCaptain) team.name = sanitizeDisplayName(teamName) || 'فريق ' + (team.index + 1);
   const id = team.nextPlayerId++;
-  team.players.push({ id, socketId: socket.id, name: name || 'لاعب', isCaptain, deviceId, connected: true });
+  team.players.push({ id, socketId: socket.id, name: sanitizeDisplayName(name) || 'لاعب', isCaptain, deviceId, connected: true });
 
   socket.join(room.code);
   socket.join(room.code + ':' + team.index);
@@ -203,6 +224,9 @@ function startGame(io, socket) {
   if (!room || !team) return { ok: false, error: 'لم يتم العثور على الفريق' };
   touch(room);
   if (team.started) return { ok: true };
+  if (socket.id !== getCaptainSocketId(team)) {
+    return { ok: false, error: 'القائد فقط يبدأ اللعبة' };
+  }
   if (team.players.length < TEAM_SIZE) {
     return { ok: false, error: 'الفريق غير مكتمل — يحتاج ' + TEAM_SIZE + ' لاعبين لبدء اللعبة' };
   }
@@ -331,14 +355,15 @@ function removePlayerFromTeam(io, room, team, socketId) {
       clearInterval(t.lockTimer);
     });
     rooms.delete(room.code);
+    if (global.__DOURK_PLATFORM__) global.__DOURK_PLATFORM__.rooms.unregister(room.code);
     return;
   }
   broadcastLobby(io, room);
 }
 
 // انقطاع الاتصال (إغلاق التبويب، تحديث الصفحة، ضعف الشبكة...):
-// طالما الفريق لسا ما بدأ اللعب، نُبقي اللاعب محجوز مكانه (نعلّمه غير متصل فقط) بدل حذفه فورًا،
-// حتى يقدر يرجع بنفس مكانه (عبر chooseTeam بنفس deviceId). لو الفريق بدأ اللعب فعلًا، نحذفه كالمعتاد.
+// نُبقي اللاعب محجوز مكانه عند أي انقطاع حتى أثناء الجولة؛ هذا مهم للجوال، ويتيح استعادة
+// الصورة والحالة نفسها عبر نفس deviceId بدل كسر الجولة بسبب تقطع الشبكة.
 function leave(io, socket) {
   const code = socket.data.roomCode;
   if (!code) return;
@@ -351,13 +376,16 @@ function leave(io, socket) {
   const player = team.players.find((p) => p.socketId === socket.id);
   if (!player) return;
 
-  if (!team.started) {
-    player.connected = false;
-    touch(room); // نبدأ عدّاد السماح من لحظة الانقطاع نفسها (مو من آخر نشاط أقدم)
-    broadcastLobby(io, room);
-    return;
+  player.connected = false;
+  if (player.isCaptain) {
+    const replacement = team.players.find((p) => p.id !== player.id && p.connected !== false);
+    if (replacement) {
+      player.isCaptain = false;
+      replacement.isCaptain = true;
+    }
   }
-  removePlayerFromTeam(io, room, team, socket.id);
+  touch(room); // نبدأ عدّاد السماح من لحظة الانقطاع نفسها (مو من آخر نشاط أقدم)
+  broadcastLobby(io, room);
 }
 
 // مغادرة صريحة (زر «مغادرة الغرفة») — يحرر مكان اللاعب فعليًا بغض النظر عن حالة الفريق.
@@ -369,6 +397,10 @@ function leaveTeam(io, socket) {
   const idx = socket.data.teamIndex;
   if (idx == null || !room.teams[idx]) return;
   removePlayerFromTeam(io, room, room.teams[idx], socket.id);
+  if (socket.leave) {
+    socket.leave(code);
+    socket.leave(code + ':' + idx);
+  }
   socket.data.roomCode = null;
   socket.data.teamIndex = null;
 }
@@ -406,6 +438,7 @@ function sweepAbandonedRooms() {
       clearInterval(t.lockTimer);
     });
     rooms.delete(code);
+    if (global.__DOURK_PLATFORM__) global.__DOURK_PLATFORM__.rooms.unregister(code);
   }
 }
 
@@ -415,6 +448,70 @@ function getActiveRoomsStats() {
     for (const t of r.teams) totalPlayers += t.players.length;
   }
   return { activeRooms: rooms.size, totalPlayers };
+}
+
+function restoreTeamTimers(team) {
+  if (team.started) {
+    team.timer = setInterval(() => { team.elapsed += 1; }, 1000);
+    if (team.timer.unref) team.timer.unref();
+  }
+  if (team.locked > 0) {
+    team.lockTimer = setInterval(() => {
+      team.locked -= 1;
+      if (team.locked <= 0) {
+        clearInterval(team.lockTimer);
+        team.lockTimer = null;
+      }
+    }, 1000);
+    if (team.lockTimer.unref) team.lockTimer.unref();
+  }
+}
+
+function snapshotActiveRooms() {
+  return [...rooms.values()].map((room) => ({
+    code: room.code,
+    maxPlayers: room.maxPlayers,
+    rounds: room.rounds,
+    results: room.results || [],
+    lastActivityAt: room.lastActivityAt,
+    teams: room.teams.map((team) => ({
+      ...team,
+      timer: null,
+      lockTimer: null,
+      players: team.players.map((player) => ({ ...player, socketId: null, connected: false })),
+    })),
+  }));
+}
+
+function restoreActiveRooms(snapshot) {
+  if (!Array.isArray(snapshot)) return 0;
+  let restored = 0;
+  for (const rawRoom of snapshot) {
+    if (!rawRoom || !/^\d{6}$/.test(String(rawRoom.code || ''))) continue;
+    const rawTeams = Array.isArray(rawRoom.teams) ? rawRoom.teams : [];
+    const room = {
+      code: String(rawRoom.code),
+      maxPlayers: ALLOWED_SIZES.includes(Number(rawRoom.maxPlayers)) ? Number(rawRoom.maxPlayers) : 3,
+      rounds: Array.isArray(rawRoom.rounds) ? rawRoom.rounds : [],
+      results: Array.isArray(rawRoom.results) ? rawRoom.results : [],
+      lastActivityAt: Date.now(),
+      teams: rawTeams.map((rawTeam, index) => {
+        const team = Object.assign(makeTeam(index), rawTeam, {
+          index,
+          timer: null,
+          lockTimer: null,
+          players: (rawTeam.players || []).map((player) => ({ ...player, socketId: null, connected: false })),
+        });
+        restoreTeamTimers(team);
+        return team;
+      }),
+    };
+    if (!room.teams.length) continue;
+    rooms.set(room.code, room);
+    if (global.__DOURK_PLATFORM__) global.__DOURK_PLATFORM__.rooms.register(room.code, 'wslha');
+    restored += 1;
+  }
+  return restored;
 }
 
 module.exports = {
@@ -430,4 +527,6 @@ module.exports = {
   getRoom,
   getActiveRoomsStats,
   sweepAbandonedRooms,
+  snapshotActiveRooms,
+  restoreActiveRooms,
 };

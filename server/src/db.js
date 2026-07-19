@@ -10,7 +10,11 @@ const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
 const STARTING_CREDITS = 1; // رصيد البداية لكل حساب جديد: تذكرة مجانية واحدة
 
 function defaultState() {
-  return { users: [], rounds: [], round_images: [], nextIds: { users: 1, rounds: 1, round_images: 1 } };
+  return {
+    users: [], rounds: [], round_images: [],
+    credit_log: [], // سجل تدقيق لكل تغيير برصيد التذاكر (لمين، كم، ليش) — انظر logCredit/getCreditLog
+    nextIds: { users: 1, rounds: 1, round_images: 1, credit_log: 1 },
+  };
 }
 let state = defaultState();
 let backend = null;
@@ -53,6 +57,7 @@ const fileBackend = {
   },
   async putUser() { this._save(); },
   async delUser() { this._save(); },
+  async putCreditLog() { this._save(); },
   async putRound() { this._save(); },
   async delRound() { this._save(); },
   async putImageMeta() { this._save(); },
@@ -81,6 +86,7 @@ function makeMongoBackend(uri) {
   const User = flex('users');
   const Round = flex('rounds');
   const ImageMeta = flex('round_images');
+  const CreditLog = flex('credit_log');
   const Counter = mongoose.model('m_counters', new mongoose.Schema({ _id: String, seq: Number }, { versionKey: false }), 'counters');
   const ImageBlob = mongoose.model('m_images', new mongoose.Schema({ _id: String, contentType: String, data: Buffer }, { versionKey: false }), 'images');
   const Legacy = mongoose.model('m_appstate', new mongoose.Schema({ _id: String, json: String }, { versionKey: false }), 'appstate');
@@ -112,12 +118,12 @@ function makeMongoBackend(uri) {
           }
         }
       }
-      const [users, rounds, images, counters] = await Promise.all([
-        User.find().lean(), Round.find().lean(), ImageMeta.find().lean(), Counter.find().lean(),
+      const [users, rounds, images, counters, creditLog] = await Promise.all([
+        User.find().lean(), Round.find().lean(), ImageMeta.find().lean(), Counter.find().lean(), CreditLog.find().lean(),
       ]);
-      const nextIds = { users: 1, rounds: 1, round_images: 1 };
+      const nextIds = { users: 1, rounds: 1, round_images: 1, credit_log: 1 };
       for (const c of counters) nextIds[c._id] = (c.seq || 0) + 1;
-      return { users: clean(users), rounds: clean(rounds), round_images: clean(images), nextIds };
+      return { users: clean(users), rounds: clean(rounds), round_images: clean(images), credit_log: clean(creditLog), nextIds };
     },
     async nextId(kind) {
       const r = await Counter.findOneAndUpdate({ _id: kind }, { $inc: { seq: 1 } }, { upsert: true, new: true });
@@ -125,6 +131,7 @@ function makeMongoBackend(uri) {
     },
     async putUser(u) { await User.updateOne({ _id: u.id }, { $set: u }, { upsert: true }); },
     async delUser(id) { await User.deleteOne({ _id: id }); },
+    async putCreditLog(entry) { await CreditLog.updateOne({ _id: entry.id }, { $set: entry }, { upsert: true }); },
     async putRound(r) { await Round.updateOne({ _id: r.id }, { $set: r }, { upsert: true }); },
     async delRound(id) { await Round.deleteOne({ _id: id }); },
     async putImageMeta(i) { await ImageMeta.updateOne({ _id: i.id }, { $set: i }, { upsert: true }); },
@@ -187,6 +194,10 @@ async function init() {
   for (const u of state.users) {
     if (typeof u.credits !== 'number') { u.credits = STARTING_CREDITS; await backend.putUser(u).catch(() => {}); }
   }
+  // ترقية: بيانات قديمة من قبل إضافة سجل تدقيق التذاكر ما فيها الحقل أصلًا
+  if (!Array.isArray(state.credit_log)) state.credit_log = [];
+  if (!state.nextIds) state.nextIds = {};
+  if (!state.nextIds.credit_log) state.nextIds.credit_log = 1;
 }
 
 // ---- استرجاع البيانات القديمة من النسخة الاحتياطية (appstate) ----
@@ -220,11 +231,27 @@ function getAllUsers() {
     .sort((a, b) => a.id - b.id)
     .map((u) => ({ id: u.id, username: u.username, isAdmin: !!u.is_admin, credits: u.credits || 0, created_at: u.created_at }));
 }
+// سجل تدقيق التذاكر: كل تغيير برصيد أي مستخدم (ليش، كم، والرصيد بعده) — عشان لو مستخدم
+// سأل "ليش انخصمت مني تذكرة" يكون فيه جواب فعلي بدل رقم رصيد خام بدون تاريخ.
+async function logCredit(userId, delta, reason, balanceAfter) {
+  const id = await backend.nextId('credit_log');
+  const entry = { id, userId: Number(userId), delta, reason: reason || null, balanceAfter, at: new Date().toISOString() };
+  state.credit_log.push(entry);
+  await backend.putCreditLog(entry);
+  return entry;
+}
+function getCreditLog(userId, limit = 50) {
+  return state.credit_log
+    .filter((e) => e.userId === Number(userId))
+    .slice(-limit)
+    .reverse();
+}
 async function insertUser({ username, password_hash, is_admin }) {
   const id = await backend.nextId('users');
   const user = { id, username, password_hash, is_admin: is_admin ? 1 : 0, credits: STARTING_CREDITS, created_at: new Date().toISOString() };
   state.users.push(user);
   await backend.putUser(user);
+  await logCredit(id, STARTING_CREDITS, 'signup-bonus', STARTING_CREDITS);
   return user;
 }
 async function updateUserFields(id, fields) {
@@ -235,10 +262,11 @@ async function updateUserFields(id, fields) {
   await backend.putUser(u);
   return u;
 }
-async function addCredits(id, delta) {
+async function addCredits(id, delta, reason) {
   const u = getUserById(id);
   if (!u) return null;
   u.credits = Math.max(0, (u.credits || 0) + delta);
+  await logCredit(id, delta, reason, u.credits);
   await backend.putUser(u);
   return u.credits;
 }
@@ -249,11 +277,14 @@ async function setUserAdmin(id, isAdmin) {
   await backend.putUser(u);
   return u;
 }
-async function setUserCredits(id, credits) {
+async function setUserCredits(id, credits, reason) {
   const u = getUserById(id);
   if (!u) return null;
   const n = Math.floor(Number(credits));
-  u.credits = Number.isFinite(n) && n >= 0 ? n : 0;
+  const newCredits = Number.isFinite(n) && n >= 0 ? n : 0;
+  const delta = newCredits - (u.credits || 0);
+  u.credits = newCredits;
+  if (delta !== 0) await logCredit(id, delta, reason || 'admin-set', u.credits);
   await backend.putUser(u);
   return u;
 }
@@ -348,6 +379,7 @@ module.exports = {
   getAllUsers,
   updateUserFields,
   addCredits,
+  getCreditLog,
   setUserAdmin,
   setUserCredits,
   deleteUser,

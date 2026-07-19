@@ -3,10 +3,11 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const db = require('../db');
-const { authMiddleware, adminMiddleware } = require('../auth');
+const { authMiddleware, adminMiddleware, hashPassword } = require('../auth');
 const { getActiveRoomsStats } = require('../rooms');
 const { compressImage } = require('../images');
 const { rateLimit } = require('../rateLimit');
+const { PASSWORD_MIN_LENGTH, validPassword } = require('../account-policy');
 
 const adminLimit = rateLimit(120, 60 * 1000, 'admin'); // 120 طلب بالدقيقة لكل IP — كافٍ للاستخدام العادي، يمنع إساءة الاستخدام
 const uploadLimit = rateLimit(30, 5 * 60 * 1000, 'admin-upload'); // رفع الصور أثقل، حد أضيق له
@@ -68,12 +69,13 @@ router.delete('/rounds/:id', async (req, res) => {
 // نخزّن الصورة في الذاكرة ثم نكتبها عبر طبقة التخزين (MongoDB أو ملف محلي).
 // الحد 12MB لكل صورة حتى تبقى ضمن حد مستند MongoDB (16MB).
 // أمان: نقبل صورًا فقط (نمنع رفع ملفات قد تُخدَّم كـ HTML/سكربت).
+// SVG مرفوض صراحة: قد يحتوي <script> ينفّذ فعليًا لو فُتح رابط الصورة مباشرة أو ضمن iframe/object.
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 12 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    if (/^image\//.test(file.mimetype)) cb(null, true);
-    else cb(new Error('يُسمح بالصور فقط'));
+    if (/^image\//.test(file.mimetype) && file.mimetype !== 'image/svg+xml') cb(null, true);
+    else cb(new Error('يُسمح بالصور فقط (SVG غير مسموح لأسباب أمنية)'));
   },
 });
 
@@ -146,11 +148,18 @@ router.patch('/users/:id', async (req, res) => {
   const id = Number(req.params.id);
   const target = db.getUserById(id);
   if (!target) return res.status(404).json({ error: 'المستخدم غير موجود' });
-  const { credits, isAdmin } = req.body || {};
+  const { credits, isAdmin, password } = req.body || {};
+  // تصفير/تغيير كلمة مرور مستخدم من طرف المشرف — لا يوجد نظام استرجاع بالإيميل حاليًا،
+  // فهذا هو المسار الوحيد لو نسي مستخدم كلمة مروره.
+  if (password != null) {
+    const pw = String(password);
+    if (!validPassword(pw)) return res.status(400).json({ error: `كلمة المرور قصيرة جدًا (${PASSWORD_MIN_LENGTH} أحرف على الأقل)` });
+    await db.updateUserFields(id, { password_hash: hashPassword(pw) });
+  }
   if (credits != null) {
     const n = Number(credits);
     if (!Number.isFinite(n) || n < 0) return res.status(400).json({ error: 'قيمة رصيد غير صحيحة' });
-    await db.setUserCredits(id, n);
+    await db.setUserCredits(id, n, 'admin-adjustment');
   }
   if (isAdmin != null) {
     if (id === req.user.id && !isAdmin) {
@@ -160,6 +169,13 @@ router.patch('/users/:id', async (req, res) => {
   }
   const u = db.getUserById(id);
   res.json({ id: u.id, username: u.username, isAdmin: !!u.is_admin, credits: u.credits || 0, created_at: u.created_at });
+});
+
+// سجل حركة رصيد التذاكر لمستخدم معيّن — يفيد المشرف لو حد اشتكى "ليش انخصمت مني تذكرة".
+router.get('/users/:id/credits-log', (req, res) => {
+  const id = Number(req.params.id);
+  if (!db.getUserById(id)) return res.status(404).json({ error: 'المستخدم غير موجود' });
+  res.json({ log: db.getCreditLog(id) });
 });
 
 // حذف مستخدم — لا يقدر المشرف يحذف نفسه.

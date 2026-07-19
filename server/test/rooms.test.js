@@ -61,6 +61,17 @@ test('chooseTeam: الفريق يرفض عضوًا رابعًا لو مكتمل'
   assert.equal(res.error, 'الفريق مكتمل');
 });
 
+test('chooseTeam: اللاعب لا يشغل مقعدين في فريقين مختلفين', () => {
+  const io = makeMockIo();
+  const player = makeMockSocket('multi-seat', 'multi-seat-device');
+  const room = rooms.createRoom(io, player, { maxPlayers: 6 });
+  const first = rooms.chooseTeam(io, player, { roomCode: room.code, teamIndex: 0, teamName: 'الأول', name: 'لاعب' });
+  assert.equal(first.ok, true);
+  const second = rooms.chooseTeam(io, player, { roomCode: room.code, teamIndex: 1, teamName: 'الثاني', name: 'لاعب' });
+  assert.match(second.error, /غادر فريقك الحالي/);
+  assert.equal(room.teams[1].players.length, 0);
+});
+
 test('انقطاع اتصال قبل بدء اللعبة: اللاعب يبقى محجوزًا (غير محذوف) بعلامة غير متصل', () => {
   const { io, room, m1 } = setupFullTeam('t3');
   rooms.leave(io, m1);
@@ -68,6 +79,16 @@ test('انقطاع اتصال قبل بدء اللعبة: اللاعب يبقى 
   assert.equal(team.players.length, 3, 'اللاعب المنقطع يبقى بالمصفوفة');
   const disconnected = team.players.find((p) => p.name === 'عضو1');
   assert.equal(disconnected.connected, false);
+});
+
+test('انقطاع اتصال أثناء اللعبة: اللاعب يبقى لاستعادة مكانه وتنتقل القيادة لعضو متصل', () => {
+  const { io, room, cap, m1 } = setupFullTeam('t3-live');
+  assert.equal(rooms.startGame(io, cap).ok, true);
+  rooms.leave(io, cap);
+  const team = room.teams[0];
+  assert.equal(team.players.length, 3);
+  assert.equal(team.players.find((p) => p.name === 'قائد').connected, false);
+  assert.equal(team.players.find((p) => p.socketId === m1.id).isCaptain, true);
 });
 
 test('استرجاع المكان: عضو منقطع يرجع بنفس مكانه عبر نفس deviceId', () => {
@@ -143,4 +164,11 @@ test('submitAnswer: القائد فقط يقدر يرسل الإجابة', () =>
   rooms.startGame(io, cap);
   const res = rooms.submitAnswer(io, m1, 'كلب');
   assert.match(res.error, /القائد فقط/);
+});
+
+test('startGame: القائد فقط يقدر يبدأ الجولة', () => {
+  const { io, cap, m1 } = setupFullTeam('t13');
+  const denied = rooms.startGame(io, m1);
+  assert.match(denied.error, /القائد فقط/);
+  assert.equal(rooms.startGame(io, cap).ok, true);
 });

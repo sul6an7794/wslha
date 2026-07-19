@@ -107,4 +107,5 @@ module.exports = {
   setAuthCookie,
   clearAuthCookie,
   parseCookies,
+  COOKIE_NAME,
 };

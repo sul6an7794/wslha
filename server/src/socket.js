@@ -44,7 +44,7 @@ function registerSocket(io) {
         }
         const room = roomsMgr.createRoom(io, socket, data || {});
         let credits;
-        if (u && u.id) credits = await db.addCredits(u.id, -ROOM_COST);
+        if (u && u.id) credits = await db.addCredits(u.id, -ROOM_COST, 'wslha-room-create');
         cb && cb({ ok: true, roomCode: room.code, teams: roomsMgr.teamSummary(room), credits });
       } catch (e) {
         cb && cb({ ok: false, error: 'تعذّر إنشاء الغرفة' });
@@ -58,6 +58,13 @@ function registerSocket(io) {
       if (!room) {
         cb && cb({ ok: false, error: 'لم يتم العثور على الغرفة' });
         return;
+      }
+      if (socket.data.teamIndex != null && String(socket.data.roomCode) !== room.code) {
+        cb && cb({ ok: false, error: 'غادر فريقك الحالي قبل دخول غرفة أخرى' });
+        return;
+      }
+      if (socket.data.roomCode && String(socket.data.roomCode) !== room.code && socket.leave) {
+        socket.leave(String(socket.data.roomCode));
       }
       // نضم اللاعب لقناة الغرفة حتى يستقبل تحديثات الفرق اللحظية (lobby) قبل اختيار فريقه.
       socket.join(room.code);
