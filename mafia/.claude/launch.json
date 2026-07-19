@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "mafia-server",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server/src/server.js"],
+      "port": 3500
+    }
+  ]
+}

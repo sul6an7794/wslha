@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>مافيا</title>
+  <link rel="stylesheet" href="css/theme.css" />
+  <link rel="stylesheet" href="css/screens.css" />
+  <link rel="stylesheet" href="css/roleCard.css" />
+</head>
+<body>
+  <div id="pageLoader" class="page-loader" role="status" aria-label="جارِ التحميل"><span class="page-loader__dots"><span></span><span></span></span></div>
+  <div id="bgNight" class="bg-layer bg-night"></div>
+  <div id="bgDay" class="bg-layer bg-day" style="opacity:0"></div>
+  <div class="bg-vignette"></div>
+  <div id="edgeLayer"></div>
+
+  <div id="appShell" class="app-shell">
+    <div class="app-content">
+      <div class="status-bar">
+        <a href="/" class="status-mark" aria-label="الرئيسية — دورك">
+          <span class="status-mark-dots"><span></span><span></span></span>
+          <span class="status-mark-word">دورك</span>
+        </a>
+        <span id="connectionChip" class="connection-chip" aria-live="polite">جارِ الاتصال…</span>
+        <span class="status-brand">مافيا</span>
+      </div>
+      <span id="spectatorChip" class="spectator-chip" style="display:none">وضع المتفرّج — خرجت من اللعبة</span>
+      <div id="stripSlot"></div>
+      <main id="screenRoot" style="flex:1;display:flex;flex-direction:column;min-height:0"></main>
+    </div>
+  </div>
+
+  <div id="overlaySlot"></div>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/socket-client.js"></script>
+  <script src="js/data/roleCards.js"></script>
+  <script src="js/components/timer.js"></script>
+  <script src="js/components/roleCard.js"></script>
+  <script src="js/components/cardsStrip.js"></script>
+  <script src="js/screens/lobby.js"></script>
+  <script src="js/screens/reveal.js"></script>
+  <script src="js/screens/night.js"></script>
+  <script src="js/screens/day.js"></script>
+  <script src="js/screens/vote.js"></script>
+  <script src="js/screens/end.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    window.addEventListener('load', function () {
+      const loader = document.getElementById('pageLoader');
+      if (!loader) return;
+      loader.classList.add('is-hidden');
+      window.setTimeout(function () { loader.remove(); }, 240);
+    });
+  </script>
+</body>
+</html>

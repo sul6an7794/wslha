@@ -1,0 +1,79 @@
+const test = require('node:test');
+const assert = require('node:assert');
+const rooms = require('../src/rooms');
+const game = require('../src/game');
+
+test('مغادرة آخر لاعب تحذف الغرفة نهائيًا', () => {
+  const room = rooms.createRoom('host1', 'القائد');
+  const code = room.code;
+  assert.ok(rooms.getRoom(code));
+
+  rooms.leaveRoom(room, 'host1');
+
+  assert.strictEqual(rooms.getRoom(code), null);
+});
+
+test('مغادرة القائد تنقل القيادة للاعب التالي دون حذف الغرفة', () => {
+  const room = rooms.createRoom('host1', 'القائد');
+  rooms.joinRoom(room.code, 'p2', 'لاعب٢');
+
+  rooms.leaveRoom(room, 'host1');
+
+  assert.strictEqual(rooms.getRoom(room.code), room);
+  assert.strictEqual(room.hostId, 'p2');
+});
+
+test('لعبة جديدة تعيد الغرفة للوبي وتصفّر كل حالة الجولة مع بقاء اللاعبين', () => {
+  const room = rooms.createRoom('h', 'القائد');
+  for (const id of ['a', 'b', 'c', 'd', 'e']) rooms.joinRoom(room.code, id, id);
+  game.startGame(room);
+  room.players.get('a').alive = false;
+  game.addLog(room, 'حدث', '#FFF');
+  game.finishGame(room, 'town', 'سبب');
+
+  rooms.resetRoomForNewGame(room);
+
+  assert.strictEqual(room.phase, 'lobby');
+  assert.strictEqual(room.players.size, 6);
+  assert.strictEqual(room.players.get('a').alive, true);
+  assert.strictEqual(room.players.get('a').roleId, null);
+  assert.strictEqual(room.log.length, 0);
+  assert.strictEqual(room.gameOverResult, null);
+});
+
+test('خيار الإعلان عن الفريق عند الإقصاء يُعطّل افتراضيًا ويبقى اختياره بعد لعبة جديدة', () => {
+  const room = rooms.createRoom('h', 'القائد');
+  assert.strictEqual(room.revealTeamOnExpel, false);
+  assert.strictEqual(rooms.serializeRoom(room).revealTeamOnExpel, false);
+
+  room.revealTeamOnExpel = true;
+  rooms.resetRoomForNewGame(room);
+  assert.strictEqual(room.revealTeamOnExpel, true);
+});
+
+test('إضافة وحذف البوتات يظهر في serializeRoom بحقل isBot', () => {
+  const room = rooms.createRoom('h', 'القائد');
+  const added = rooms.addBotPlayers(room, 3);
+  assert.strictEqual(added.length, 3);
+  assert.strictEqual(room.players.size, 4);
+  const serialized = rooms.serializeRoom(room);
+  assert.strictEqual(serialized.players.filter((p) => p.isBot).length, 3);
+
+  rooms.removeBotPlayers(room);
+  assert.strictEqual(room.players.size, 1);
+});
+
+test('إعادة تشغيل الخادم تحفظ غرفة جارية وتعيدها للوبي بنفس الكود واللاعبين', () => {
+  const room = rooms.createRoom('restart-host', 'القائد');
+  for (const id of ['restart-a', 'restart-b', 'restart-c', 'restart-d', 'restart-e']) rooms.joinRoom(room.code, id, id);
+  game.startGame(room);
+  const snapshot = rooms.snapshotLobbies();
+  rooms.rooms.delete(room.code);
+
+  assert.strictEqual(rooms.restoreLobbies(snapshot), 1);
+  const restored = rooms.getRoom(room.code);
+  assert.ok(restored);
+  assert.strictEqual(restored.phase, 'lobby');
+  assert.strictEqual(restored.players.size, 6);
+  rooms.rooms.delete(room.code);
+});

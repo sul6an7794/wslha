@@ -1,0 +1,623 @@
+const AR = (v) => String(v).replace(/[0-9]/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d]);
+const PASSWORD_MIN_LENGTH = 6;
+
+const ICONS = {
+  ticket: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1a2 2 0 0 0 0 4v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1a2 2 0 0 0 0-4z"/><path d="M13 7v10"/></svg>',
+  ticketLg: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1a2 2 0 0 0 0 4v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1a2 2 0 0 0 0-4z"/><path d="M13 7v10"/></svg>',
+  bolt: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>',
+  users: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  tiktok: '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.59 6.69A4.79 4.79 0 0 1 15.82 2h-3.45v12.64a2.9 2.9 0 1 1-2.01-2.76V8.37a6.42 6.42 0 1 0 5.46 6.35V9.08a8.16 8.16 0 0 0 4.77 1.53V7.16a4.83 4.83 0 0 1-1-.47z"/></svg>',
+  whatsapp: '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.52 3.48A11.93 11.93 0 0 0 12.05 0C5.46 0 .1 5.36.1 11.95c0 2.1.55 4.14 1.59 5.94L0 24l6.28-1.65a11.94 11.94 0 0 0 5.76 1.47h.01c6.59 0 11.95-5.36 11.95-11.95 0-3.19-1.24-6.19-3.48-8.39zm-8.47 18.3h-.01a9.91 9.91 0 0 1-5.06-1.39l-.36-.21-3.73.98 1-3.63-.24-.37a9.88 9.88 0 0 1-1.52-5.25c0-5.46 4.44-9.9 9.91-9.9 2.64 0 5.12 1.03 6.99 2.9a9.82 9.82 0 0 1 2.9 6.99c0 5.47-4.44 9.91-9.88 9.91zm5.43-7.43c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.66.15-.19.3-.76.97-.93 1.17-.17.2-.34.22-.63.07-.3-.15-1.25-.46-2.38-1.47a8.93 8.93 0 0 1-1.65-2.05c-.17-.3-.02-.45.13-.6.13-.13.3-.34.45-.5.15-.17.2-.3.3-.5.1-.2.05-.37-.03-.52-.07-.15-.66-1.6-.91-2.19-.24-.58-.48-.5-.66-.5h-.56c-.2 0-.52.08-.8.38-.27.3-1.05 1.03-1.05 2.51s1.08 2.92 1.23 3.12c.15.2 2.12 3.24 5.14 4.55.72.31 1.28.5 1.72.64.72.23 1.38.2 1.9.12.58-.09 1.77-.72 2.02-1.42.25-.7.25-1.3.18-1.42-.08-.13-.27-.2-.57-.35z"/></svg>',
+  back: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16"/><path d="M14 6l6 6-6 6"/></svg>',
+  chevron: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>',
+};
+
+const GAMES = {
+  mafia: {
+    name: 'مافيا', kicker: 'لعبة الخداع الاجتماعي', cls: 'mafia',
+    desc: 'كل ليلة تختفي ضحية، وكل نهار تشتعل الاتهامات. اكتشف المافيا قبل ما يطلعونك من المدينة.',
+    cardDesc: 'اقرأ الوجوه، دافع عن نفسك، وصوّت قبل ما يفوت الوقت.',
+    meta: ['٦–١٣ لاعبًا', '٢٠–٤٠ دقيقة', 'جهاز لكل لاعب'],
+    cardMeta: ['٦–١٣ لاعبًا', '٢٠–٤٠ دقيقة', { hi: 'خير ضد شر' }],
+    steps: [
+      { n: '١', t: 'افتح الغرفة وشارك رابطها — كل لاعب يدخل من جواله ويعرف دوره بسرية.' },
+      { n: '٢', t: 'بالليل المافيا تختار ضحية، والطبيب يحمي، والشيخ يفحص ويشك.' },
+      { n: '٣', t: 'بالنهار الكل يتكلم ويتّهم، والتصويت يقرر مين يطلع — آخر فريق يبقى يكسب.' },
+    ],
+    counts: null, countLabel: 'عدد اللاعبين المتوقّع', countUnit: 'لاعبًا',
+  },
+  wslha: {
+    name: 'وصّلها', kicker: 'لعبة الوصف الجماعي', cls: 'wslha',
+    desc: 'كل فريق من ٣ لاعبين يشوف ٣ صور مختلفة. نقاش واحد يوصلكم للإجابة، وغلطة وحدة توقفكم ١٥ ثانية… فمافي مجال للهبد.',
+    cardDesc: '٣ لاعبين، ٣ صور، وجواب واحد. صفوا اللي تشوفونه ووصلوا للحل قبل ما يوقفكم الغلط.',
+    meta: ['٣ لاعبين في كل فريق', 'وصف حي، بلا كتابة', 'الوقت ضدكم'],
+    cardMeta: ['٣ لاعبين في كل فريق', 'وصف حي، بلا كتابة', { hi: 'الوقت ضدكم' }],
+    steps: [
+      { n: '١', t: 'افتح الغرفة وقسّم اللاعبين إلى فرق — كل فريق من ثلاثة.' },
+      { n: '٢', t: 'كل واحد بالفريق يشوف صورة مختلفة، وتوصفون اللي تشوفونه لبعض بالكلام فقط.' },
+      { n: '٣', t: 'اكتبوا جوابكم المشترك — تغلطون ثلاث مرات وتأخذون تلميح، وكل ثانية تفرق.' },
+    ],
+    counts: [1, 2, 3, 4, 5], countLabel: 'عدد الفرق', countUnit: 'فرق',
+  },
+};
+
+const App = {
+  state: {
+    screen: 'home',
+    user: null,
+    authMode: 'login',
+    authError: '',
+    pendingCreate: false,
+    pendingJoinCode: '',
+    game: 'mafia',
+    joinCode: '',
+    teamCount: 1,
+    createError: '',
+    creating: false,
+    deleteConfirm: false,
+  },
+
+  async api(path, opts) {
+    const res = await fetch(path, Object.assign({ credentials: 'include', headers: { 'Content-Type': 'application/json' } }, opts));
+    let body = null;
+    try { body = await res.json(); } catch (e) {}
+    if (!res.ok) throw new Error((body && body.error) || 'صار خطأ، حاول مرة ثانية');
+    return body || {};
+  },
+
+  async refreshMe() {
+    try {
+      const { user } = await this.api('/api/auth/me');
+      this.state.user = user;
+    } catch (e) {
+      this.state.user = null;
+    }
+  },
+
+  showToast(msg) {
+    clearTimeout(this._toastTimer);
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    this._toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+  },
+
+  setLoading(on) {
+    document.getElementById('loadingOverlay').classList.toggle('show', !!on);
+  },
+
+  go(screen, extra) {
+    const page = window.location.hash.slice(1);
+    if (screen === 'home' && (page === 'privacy' || page === 'terms')) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+    this.setLoading(true);
+    clearTimeout(this._goTimer);
+    this._goTimer = setTimeout(() => {
+      Object.assign(this.state, { screen }, extra || {});
+      this.setLoading(false);
+      this.render();
+      window.scrollTo(0, 0);
+    }, 220);
+  },
+
+  requireLogin(next) {
+    if (this.state.user) return true;
+    this.state.pendingCreate = next === 'create';
+    this.state.authError = '';
+    this.go('auth');
+    return false;
+  },
+
+  openGame(game) { this.go('game', { game }); },
+
+  submitJoinCode() {
+    const code = document.getElementById('joinCodeInput').value.replace(/\D/g, '').slice(0, 6);
+    if (code.length !== 6) return this.showToast('رقم الغرفة ٦ أرقام');
+    this.beginJoin(code);
+  },
+
+  beginJoin(code) {
+    if (!this.state.user) {
+      this.state.pendingJoinCode = code;
+      this.state.authError = 'سجّل دخولك للانضمام إلى الغرفة باسمك.';
+      this.go('auth');
+      return;
+    }
+    this.continueJoin(code);
+  },
+
+  async continueJoin(code) {
+    try {
+      const { game } = await this.api('/api/rooms/' + code);
+      const name = this.state.user ? '&name=' + encodeURIComponent(this.state.user.username) : '';
+      window.location.href = '/' + game + '/?room=' + code + (game === 'mafia' ? name : '');
+    } catch (e) {
+      this.state.pendingJoinCode = '';
+      this.setLoading(false);
+      this.render();
+      this.showToast('ما لقينا غرفة بهذا الرقم');
+    }
+  },
+
+  normalizeJoinCode(input) {
+    input.value = input.value.replace(/\D/g, '').slice(0, 6);
+  },
+
+  setAuthMode(mode) { this.state.authMode = mode; this.state.authError = ''; this.render(); },
+
+  async submitAuth() {
+    const username = document.getElementById('authName').value.trim();
+    const password = document.getElementById('authPass').value;
+    const password2 = document.getElementById('authPass2') ? document.getElementById('authPass2').value : '';
+    if (!username) return this.setAuthError('محتاجين اسمك أول');
+    if (password.length < PASSWORD_MIN_LENGTH) return this.setAuthError(`خلّ كلمة المرور ${AR(PASSWORD_MIN_LENGTH)} أحرف أو أكثر`);
+    if (this.state.authMode === 'register' && password !== password2) return this.setAuthError('كلمتا المرور مو متطابقتين، تأكد منهم');
+    try {
+      const path = this.state.authMode === 'register' ? '/api/auth/register' : '/api/auth/login';
+      const { user } = await this.api(path, { method: 'POST', body: JSON.stringify({ username, password }) });
+      this.state.user = user;
+      this.showToast(this.state.authMode === 'register' ? 'تم إنشاء حسابك — عندك تذكرة تنتظرك' : 'حيّاك بعودتك يا ' + user.username);
+      const pendingCreate = this.state.pendingCreate;
+      const pendingJoinCode = this.state.pendingJoinCode;
+      this.state.pendingCreate = false;
+      this.state.pendingJoinCode = '';
+      if (pendingJoinCode) return this.continueJoin(pendingJoinCode);
+      if (pendingCreate === 'mafia') return this.createRoom();
+      this.go(pendingCreate ? 'create' : 'home');
+    } catch (e) {
+      this.setAuthError(e.message);
+    }
+  },
+
+  setAuthError(msg) {
+    this.state.authError = msg;
+    const el = document.getElementById('authErrorSlot');
+    if (!el) return;
+    el.replaceChildren();
+    if (msg) {
+      const banner = document.createElement('div');
+      banner.className = 'error-banner';
+      banner.textContent = msg;
+      el.appendChild(banner);
+    }
+  },
+
+  async logout() {
+    try { await this.api('/api/auth/logout', { method: 'POST' }); } catch (e) {}
+    this.state.user = null;
+    this.showToast('تم تسجيل الخروج');
+    this.go('home');
+  },
+
+  goCreate() {
+    if (this.state.game === 'mafia') {
+      if (this.requireLogin('mafia')) this.createRoom();
+      return;
+    }
+    if (this.requireLogin('create')) this.go('create');
+  },
+
+  decCount() {
+    const g = GAMES[this.state.game];
+    if (!g.counts) return;
+    const i = g.counts.indexOf(this.state.teamCount);
+    if (i > 0) this.setTeamCount(g.counts[i - 1]);
+  },
+  incCount() {
+    const g = GAMES[this.state.game];
+    if (!g.counts) return;
+    const i = g.counts.indexOf(this.state.teamCount);
+    if (i < g.counts.length - 1) this.setTeamCount(g.counts[i + 1]);
+  },
+
+  setTeamCount(nextCount) {
+    const g = GAMES[this.state.game];
+    if (!g.counts || !g.counts.includes(nextCount)) return;
+    this.state.teamCount = nextCount;
+    const value = document.getElementById('teamCountValue');
+    const unit = document.getElementById('teamCountUnit');
+    const dec = document.getElementById('teamCountDec');
+    const inc = document.getElementById('teamCountInc');
+    const index = g.counts.indexOf(nextCount);
+    if (value) value.textContent = AR(nextCount);
+    if (unit) unit.textContent = nextCount === 1 ? 'فريق' : g.countUnit;
+    if (dec) dec.disabled = index === 0;
+    if (inc) inc.disabled = index === g.counts.length - 1;
+  },
+
+  async createRoom() {
+    const user = this.state.user;
+    if (!user) return this.go('auth');
+    if ((user.credits || 0) <= 0) { this.showToast('ما عندك تذاكر كافية'); return this.go('tickets'); }
+    if (this.state.creating) return;
+    this.state.creating = true;
+    this.render();
+    try {
+      if (this.state.game === 'mafia') {
+        const { credits, rt } = await this.api('/api/rooms/mafia', { method: 'POST' });
+        this.state.user = Object.assign({}, user, { credits });
+        window.location.href = '/mafia/?autoCreate=1&name=' + encodeURIComponent(user.username) + '&rt=' + encodeURIComponent(rt || '');
+      } else {
+        const maxPlayers = this.state.teamCount * 3;
+        window.location.href = '/wslha/?autoCreate=1&maxPlayers=' + maxPlayers;
+      }
+    } catch (e) {
+      this.state.creating = false;
+      this.showToast(e.message);
+      this.render();
+    }
+  },
+
+  buyTickets() { this.showToast('قريبًا — بوابة الدفع تحت الإعداد'); },
+
+  async saveName() {
+    const name = document.getElementById('profileNameInput').value.trim();
+    if (!name) return this.showToast('اكتب الاسم الجديد أولًا');
+    try {
+      const { user } = await this.api('/api/auth/profile', { method: 'PATCH', body: JSON.stringify({ username: name }) });
+      this.state.user = user;
+      this.showToast('تم تحديث الاسم');
+      this.render();
+    } catch (e) {
+      this.showToast(e.message);
+    }
+  },
+
+  async changePassword() {
+    const currentPassword = document.getElementById('profileCurrentPassword').value;
+    const newPassword = document.getElementById('profileNewPassword').value;
+    if (newPassword.length < PASSWORD_MIN_LENGTH) return this.showToast(`كلمة المرور الجديدة ${AR(PASSWORD_MIN_LENGTH)} أحرف أو أكثر`);
+    try {
+      await this.api('/api/auth/profile', { method: 'PATCH', body: JSON.stringify({ currentPassword, newPassword }) });
+      this.showToast('تم تغيير كلمة المرور');
+      this.render();
+    } catch (e) {
+      this.showToast(e.message);
+    }
+  },
+
+  showDeleteConfirm() { this.state.deleteConfirm = true; this.render(); },
+  cancelDeleteAccount() { this.state.deleteConfirm = false; this.render(); },
+
+  async deleteAccount() {
+    const currentPassword = document.getElementById('deleteAccountPassword').value;
+    if (!currentPassword) return this.showToast('اكتب كلمة المرور للتأكيد');
+    try {
+      await this.api('/api/auth/profile', { method: 'DELETE', body: JSON.stringify({ currentPassword }) });
+      this.state.user = null;
+      this.state.deleteConfirm = false;
+      this.showToast('تم حذف الحساب');
+      this.go('home');
+    } catch (e) {
+      this.showToast(e.message);
+    }
+  },
+
+  metaLine(list) {
+    return list.map((m, i) => {
+      const isLast = i === list.length - 1;
+      const html = typeof m === 'object' ? '<span class="hi">' + m.hi + '</span>' : m;
+      return '<span>' + html + '</span>' + (isLast ? '' : '<span class="div">|</span>');
+    }).join('');
+  },
+
+  renderHeader() {
+    const s = this.state;
+    const ticket = s.user
+      ? '<button class="ticket-pill" onclick="App.go(\'tickets\')">' + ICONS.ticket + '<span>' + AR(s.user.credits || 0) + '</span></button>'
+      : '';
+    const right = s.user
+      ? '<button class="profile-pill" onclick="App.go(\'profile\',{})">' + this.escape(s.user.username) + '</button>'
+      : '<button class="login-pill" onclick="App.go(\'auth\')">تسجيل الدخول</button>';
+    document.getElementById('headerRoot').innerHTML =
+      '<div class="header-side start">' + ticket + '</div>' +
+      '<button class="logo-btn" onclick="App.go(\'home\')" aria-label="الرئيسية — دورك">' +
+        '<span style="display:flex;align-items:center;gap:8px;"><span class="logo-word">دورك</span><span class="logo-dots"><span></span><span></span></span></span>' +
+        '<span class="logo-tag">تلعبها صح</span>' +
+      '</button>' +
+      '<div class="header-side end">' + right + '</div>';
+  },
+
+  escape(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); },
+
+  screenHome() {
+    const adminLink = this.state.user && this.state.user.isAdmin
+      ? '<span>·</span><a href="/wslha/?admin=1">لوحة التحكم</a>'
+      : '';
+    return '' +
+      '<main data-screen="home">' +
+        '<section class="hero">' +
+          '<div class="eyebrow">منصة الألعاب الاجتماعية</div>' +
+          '<h1>جمعتكم<br>ناقصها لعبه</h1>' +
+          '<p>افتح غرفة وشارك الرابط، وربعك يدخلون من جوالاتهم.</p>' +
+        '</section>' +
+        '<section class="section">' +
+          '<div class="section-head"><h2>وش تلعبون الليلة؟</h2><span>اختر لعبة، افتح غرفة، واجمع ربعك</span></div>' +
+          '<button class="game-card mafia" onclick="App.openGame(\'mafia\')">' +
+            '<span class="glow"></span>' +
+            '<span class="body">' +
+              '<span class="kicker">شك · اتهامات · تصويت</span>' +
+              '<span class="title">مافيا</span>' +
+              '<span class="desc">' + GAMES.mafia.cardDesc + '</span>' +
+              '<span class="meta">' + this.metaLine(GAMES.mafia.cardMeta) + '</span>' +
+            '</span>' +
+          '</button>' +
+          '<button class="game-card wslha" onclick="App.openGame(\'wslha\')">' +
+            '<span class="glow"></span>' +
+            '<span class="body">' +
+              '<span class="kicker">وصف · نقاش · وقت محدود</span>' +
+              '<span class="title">وصّلـها</span>' +
+              '<span class="desc">' + GAMES.wslha.cardDesc + '</span>' +
+              '<span class="meta">' + this.metaLine(GAMES.wslha.cardMeta) + '</span>' +
+            '</span>' +
+          '</button>' +
+        '</section>' +
+        '<section class="join-panel">' +
+          '<div class="join-box">' +
+            '<div class="t">وصلك كود أو رابط؟</div>' +
+            '<div class="s">افتح الرابط للانضمام مباشرة، أو اكتب كود الغرفة هنا.</div>' +
+            '<div class="join-row">' +
+              '<input id="joinCodeInput" inputmode="numeric" autocomplete="one-time-code" maxlength="6" oninput="App.normalizeJoinCode(this)" placeholder="رقم الغرفة" aria-label="رقم الغرفة">' +
+              '<button onclick="App.submitJoinCode()">انضم للغرفة</button>' +
+            '</div>' +
+          '</div>' +
+        '</section>' +
+        '<section class="section">' +
+          '<h2 style="margin-bottom:16px;">ليش دورك؟</h2>' +
+          '<div class="why-list">' +
+            '<div class="why-row"><span class="ic" style="color:#FF2D2D;">' + ICONS.bolt + '</span><div><div class="t">افتح والعب فورًا</div><div class="d">رابط واحد يجمع الكل — لا متجر تطبيقات، ولا تحديثات، ولا «انتظر يحمّل».</div></div></div>' +
+            '<div class="why-row"><span class="ic" style="color:#E0B86A;">' + ICONS.ticketLg + '</span><div><div class="t">واحد يدفع، والكل يلعب</div><div class="d">التذكرة على منشئ الغرفة بس — ربعك كلهم يدخلون بالرقم مجانًا.</div></div></div>' +
+            '<div class="why-row"><span class="ic" style="color:#818cf8;">' + ICONS.users + '</span><div><div class="t">حساب واحد لكل لعبة جاية</div><div class="d">رصيدك واسمك يبقون معك — تلعب مافيا اليوم ووصّلها بكرة بالحساب نفسه.</div></div></div>' +
+          '</div>' +
+        '</section>' +
+      '</main>' +
+      '<footer>' +
+        '<div class="tag">لمّ ربعك… والعبها صح</div>' +
+        '<div class="links"><a class="footer-link" href="#privacy">سياسة الخصوصية</a><span>·</span><a class="footer-link" href="#terms">الشروط والأحكام</a>' + adminLink + '</div>' +
+        '<div class="socials"><a href="https://www.tiktok.com/@dourk" target="_blank" rel="noopener noreferrer" aria-label="تيك توك" title="تيك توك">' + ICONS.tiktok + '</a><a href="https://wa.me/?text=' + encodeURIComponent('جرّب منصة دورك: ' + location.origin) + '" target="_blank" rel="noopener noreferrer" aria-label="مشاركة عبر واتساب" title="مشاركة عبر واتساب">' + ICONS.whatsapp + '</a></div>' +
+        '<div class="copy">© دورك ٢٠٢٦ — جميع الحقوق محفوظة</div>' +
+      '</footer>';
+  },
+
+  screenAuth() {
+    const s = this.state;
+    const isRegister = s.authMode === 'register';
+    return '' +
+      '<main data-screen="auth">' +
+        '<button class="back-btn" onclick="App.go(\'home\')">' + ICONS.back + ' رجوع</button>' +
+        '<div style="margin:26px 0 22px;text-align:center;">' +
+          '<h1 style="font-size:32px;margin:0 0 8px;">حيّاك في دورك</h1>' +
+          '<p style="font-size:14px;color:var(--subtext);margin:0;">دقيقة وحدة وتكون داخل اللعب</p>' +
+        '</div>' +
+        '<div class="tabs">' +
+          '<button class="' + (!isRegister ? 'active' : '') + '" onclick="App.setAuthMode(\'login\')">تسجيل دخول</button>' +
+          '<button class="' + (isRegister ? 'active' : '') + '" onclick="App.setAuthMode(\'register\')">حساب جديد</button>' +
+        '</div>' +
+        '<div class="form-col">' +
+          '<input id="authName" class="field" maxlength="20" placeholder="اسم المستخدم">' +
+          '<input id="authPass" type="password" class="field" placeholder="كلمة المرور">' +
+          (isRegister ? '<input id="authPass2" type="password" class="field" placeholder="تأكيد كلمة المرور">' : '') +
+          (isRegister ? '<div class="hint-banner">' + ICONS.ticket + ' أول تذكرة علينا — تجي مع حسابك الجديد</div>' : '') +
+          '<div id="authErrorSlot">' + (s.authError ? '<div class="error-banner">' + this.escape(s.authError) + '</div>' : '') + '</div>' +
+          '<button class="btn-primary" onclick="App.submitAuth()">' + (isRegister ? 'إنشاء الحساب' : 'دخول') + '</button>' +
+        '</div>' +
+        '<div class="footer-tag">دورك — تلعبها صح</div>' +
+      '</main>';
+  },
+
+  screenGame() {
+    const s = this.state, g = GAMES[s.game];
+    const ticketsLine = s.user ? '<span class="r">رصيدك: ' + AR(s.user.credits || 0) + '</span>' : '';
+    const isCreatingMafia = g.cls === 'mafia' && s.creating;
+    const gameTitle = g.cls === 'wslha' ? 'وصّلـها' : g.name;
+    const createLabel = g.cls === 'wslha'
+      ? '<span class="cta-create-label">إنشاء غرفة <span class="cta-game-mark wslha">وصّلـها</span></span>'
+      : '<span class="cta-create-label">إنشاء غرفة <span class="cta-game-mark mafia">مافيا</span></span>';
+    const quickExample = g.cls === 'wslha'
+      ? '<div class="game-example"><strong>مثال سريع</strong><span>واحد يشوف ثلج، والثاني معطف، والثالث مدفأة — وش الرابط؟ الشتاء.</span></div>'
+      : '';
+    return '' +
+      '<main data-screen="game">' +
+        '<button class="back-btn" onclick="App.go(\'home\')">' + ICONS.back + ' كل الألعاب</button>' +
+        '<div class="game-hero ' + g.cls + '">' +
+          '<div class="glow"></div>' +
+          '<div class="inner">' +
+            '<div class="kicker">' + g.kicker + '</div>' +
+            '<div class="title">' + gameTitle + '</div>' +
+            '<p>' + g.desc + '</p>' +
+            '<div class="meta">' + g.meta.map((m) => '<span>' + m + '</span>').join('') + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<h2 style="font-size:22px;margin-bottom:12px;">كيف تلعبون؟</h2>' +
+        '<div class="steps">' + g.steps.map((st) =>
+          '<div class="step-row"><span class="step-num" style="color:' + (g.cls === 'mafia' ? '#FF6B6B' : '#c4b5fd') + ';border-color:' + (g.cls === 'mafia' ? 'rgba(255,45,45,.3)' : 'rgba(129,140,248,.35)') + ';">' + st.n + '</span><div class="step-text">' + st.t + '</div></div>'
+        ).join('') + '</div>' +
+        quickExample +
+        '<div class="ticket-banner"><span class="l">' + ICONS.ticket + ' سيتم خصم تذكرة واحدة عند الإنشاء</span>' + ticketsLine + '</div>' +
+        '<button class="cta-btn ' + g.cls + '" ' + (isCreatingMafia ? 'disabled' : '') + ' onclick="App.goCreate()">' + (isCreatingMafia ? 'جارِ الإنشاء...' : createLabel) + '</button>' +
+        '<div class="footer-tag">دورك — تلعبها صح</div>' +
+      '</main>';
+  },
+
+  screenCreate() {
+    const s = this.state, g = GAMES[s.game];
+    const credits = s.user ? (s.user.credits || 0) : 0;
+    const noTickets = credits <= 0;
+    const gameWordmark = g.cls === 'wslha'
+      ? '<div class="create-game-mark wslha">وصّلـها</div>'
+      : '<div class="create-game-mark mafia">مافيا</div>';
+    const countIndex = g.counts ? g.counts.indexOf(s.teamCount) : -1;
+    const atFirstCount = countIndex === 0;
+    const atLastCount = g.counts ? countIndex === g.counts.length - 1 : false;
+    const stepper = g.counts ? (
+      '<div>' +
+        '<div class="field-label">' + g.countLabel + '</div>' +
+        '<div class="stepper">' +
+          '<button id="teamCountDec" onclick="App.decCount()" aria-label="أقل" ' + (atFirstCount ? 'disabled' : '') + '>−</button>' +
+          '<div class="val"><div id="teamCountValue" class="n">' + AR(s.teamCount) + '</div><div id="teamCountUnit" class="u">' + (s.teamCount === 1 ? 'فريق' : g.countUnit) + '</div></div>' +
+          '<button id="teamCountInc" onclick="App.incCount()" aria-label="أكثر" ' + (atLastCount ? 'disabled' : '') + '>+</button>' +
+        '</div>' +
+      '</div>'
+    ) : (
+      '<div>' +
+        '<div class="field-label">' + g.countLabel + '</div>' +
+        '<div style="font-size:14px;color:var(--subtext);">' + g.meta[0] + ' — يتحدد بمن ينضم للغرفة، بلا حد ثابت وقت الإنشاء</div>' +
+      '</div>'
+    );
+    return '' +
+      '<main data-screen="create">' +
+        '<button class="back-btn" onclick="App.go(\'game\')">' + ICONS.back + ' ' + g.name + '</button>' +
+        gameWordmark +
+        '<h1 style="font-size:30px;margin:20px 0 4px;">غرفتك الجديدة</h1>' +
+        '<p style="font-size:14px;color:var(--subtext);margin:0 0 24px;">لعبة ' + g.name + ' — أكّد وابدأ</p>' +
+        '<div class="form-col" style="gap:18px;">' +
+          stepper +
+          '<div class="ticket-banner"><span class="l">' + ICONS.ticket + ' سيتم خصم تذكرة واحدة</span><span class="r">رصيدك: ' + AR(credits) + '</span></div>' +
+          (noTickets ? '<div class="error-banner">رصيدك من التذاكر انتهى — اشحن رصيدك من صفحة التذاكر أولًا.</div>' : '') +
+          '<button class="cta-btn ' + g.cls + '" ' + (noTickets || s.creating ? 'disabled' : '') + ' onclick="App.createRoom()">' + (s.creating ? 'جارِ الإنشاء...' : 'إنشاء الغرفة') + '</button>' +
+        '</div>' +
+        '<div class="footer-tag">دورك — تلعبها صح</div>' +
+      '</main>';
+  },
+
+  screenTickets() {
+    const s = this.state;
+    const credits = s.user ? (s.user.credits || 0) : 0;
+    return '' +
+      '<main data-screen="tickets">' +
+        '<button class="back-btn" onclick="App.go(\'home\')">' + ICONS.back + ' الرئيسية</button>' +
+        '<h1 style="font-size:30px;margin:10px 0 20px;">تذاكرك</h1>' +
+        '<div class="tickets-card"><div style="color:#E0B86A;margin-bottom:6px;display:flex;justify-content:center;">' + ICONS.ticketLg + '</div><div class="n">' + AR(credits) + '</div><div class="l">رصيدك الحالي — كل غرفة تخصم تذكرة واحدة، لأي لعبة</div></div>' +
+        '<button class="btn-primary" style="background:#E0B86A;color:#06060D;margin-bottom:8px;" onclick="App.buyTickets()">شراء تذاكر</button>' +
+        '<div style="font-size:11.5px;color:var(--faint);text-align:center;margin-bottom:10px;">الدفع تجريبي حاليًا لأغراض العرض</div>' +
+        '<div style="font-size:13px;color:var(--faint);line-height:1.9;text-align:center;max-width:300px;margin:0 auto;">التذكرة تُخصم من منشئ الغرفة فقط. أصدقاؤك ينضمون بالرقم أو الرابط مجانًا.</div>' +
+        '<div class="footer-tag">دورك — تلعبها صح</div>' +
+      '</main>';
+  },
+
+  screenProfile() {
+    const s = this.state, u = s.user;
+    if (!u) { this.go('home'); return ''; }
+    return '' +
+      '<main data-screen="profile">' +
+        '<button class="back-btn" onclick="App.go(\'home\')">' + ICONS.back + ' الرئيسية</button>' +
+        '<h1 style="font-size:30px;margin:10px 0 20px;">حسابك</h1>' +
+        '<div class="profile-card">' +
+          '<div class="avatar">' + this.escape(u.username.trim().charAt(0).toUpperCase()) + '</div>' +
+          '<div style="flex:1;min-width:0;"><div style="font-weight:900;font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + this.escape(u.username) + '</div><div style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:#E0B86A;margin-top:3px;">' + ICONS.ticket + ' ' + AR(u.credits || 0) + ' تذكرة</div></div>' +
+        '</div>' +
+         '<div class="form-col" style="margin-bottom:18px;">' +
+          '<div class="field-label">تغيير الاسم</div>' +
+          '<div style="display:flex;gap:8px;"><input id="profileNameInput" class="field" maxlength="20" placeholder="الاسم الجديد" style="flex:1;min-width:0;"><button class="btn-primary" style="width:auto;margin-top:0;padding:12px 20px;" onclick="App.saveName()">حفظ</button></div>' +
+         '</div>' +
+         '<div class="form-col profile-password" style="margin-bottom:18px;">' +
+           '<div class="field-label">تغيير كلمة المرور</div>' +
+           '<input id="profileCurrentPassword" class="field" type="password" autocomplete="current-password" placeholder="كلمة المرور الحالية">' +
+           '<input id="profileNewPassword" class="field" type="password" autocomplete="new-password" placeholder="كلمة المرور الجديدة (٦ أحرف أو أكثر)">' +
+           '<button class="row-btn" onclick="App.changePassword()"><span>حفظ كلمة المرور</span><span style="color:var(--dim);">' + ICONS.chevron + '</span></button>' +
+         '</div>' +
+         '<button class="row-btn" onclick="App.go(\'tickets\')"><span style="display:flex;align-items:center;gap:10px;color:#E0B86A;">' + ICONS.ticket + ' <span style="color:var(--text);">تذاكري ورصيدي</span></span><span style="color:var(--dim);">' + ICONS.chevron + '</span></button>' +
+         '<button class="danger-btn" onclick="App.logout()">تسجيل الخروج</button>' +
+         (s.deleteConfirm
+           ? '<div class="delete-confirm"><div class="field-label">حذف الحساب نهائيًا</div><p>سيُحذف حسابك وسجلّه. اكتب كلمة المرور للتأكيد.</p><input id="deleteAccountPassword" class="field" type="password" autocomplete="current-password" placeholder="كلمة المرور الحالية"><div><button class="danger-btn" onclick="App.deleteAccount()">تأكيد الحذف</button><button class="btn-link" onclick="App.cancelDeleteAccount()">إلغاء</button></div></div>'
+           : '<button class="btn-link delete-link" onclick="App.showDeleteConfirm()">حذف الحساب</button>') +
+         '<div class="footer-tag">دورك — تلعبها صح</div>' +
+      '</main>';
+  },
+
+  screenLegal(type) {
+    const isPrivacy = type === 'privacy';
+    const title = isPrivacy ? 'سياسة الخصوصية' : 'الشروط والأحكام';
+    const intro = isPrivacy
+      ? 'خصوصيتك جزء من لعبتك. هذه الصفحة تشرح ببساطة المعلومات التي نحتاجها لتشغيل دورك وكيف نتعامل معها.'
+      : 'هذه القواعد تحفظ متعة اللعب وعدالته للجميع عند استخدام منصة دورك أو إنشاء غرفة فيها.';
+    const sections = isPrivacy ? [
+      ['المعلومات التي نحتاجها', [
+        'بيانات الحساب مثل اسم المستخدم وبيانات تسجيل الدخول.',
+        'بيانات الغرف واللعب اللازمة لإنشاء الغرفة، دعوة اللاعبين، وحفظ مكانك عند انقطاع الاتصال.',
+        'بيانات تقنية أساسية تساعدنا على حماية المنصة ومعالجة الأعطال وتحسين التجربة.'
+      ]],
+      ['كيف نستخدمها', [
+        'لتشغيل حسابك، إدارة رصيد التذاكر، وإنشاء الغرف والانضمام إليها.',
+        'لإظهار حالة اللعبة والنتيجة للاعبين الموجودين في الغرفة نفسها.',
+        'لمنع إساءة الاستخدام، حماية الحسابات، وتحسين أداء المنصة.'
+      ]],
+      ['ما لا نفعله', [
+        'لا نبيع بياناتك الشخصية.',
+        'لا نعرض بيانات حسابك للاعبين الآخرين إلا ما يلزم داخل الغرفة، مثل اسمك وحالة لعبك.',
+        'لا نطلب منكم مشاركة كلمات المرور أو أي بيانات حساسة داخل الغرف.'
+      ]],
+      ['تحكمك في بياناتك', [
+        'يمكنك تعديل اسم المستخدم وكلمة المرور من صفحة الحساب.',
+        'يمكنك طلب حذف حسابك من صفحة الحساب؛ عند التأكيد يُحذف الحساب وسجلّه المرتبط به.',
+        'نستخدم ملفات تعريف الارتباط والتخزين المحلي فقط لتسجيل الدخول، حفظ جلستك، واستعادة مكانك في الغرفة عند الحاجة.'
+      ]],
+      ['تحديثات السياسة', [
+        'قد نحدّث هذه السياسة عند تطوير المنصة. استمرارك في استخدام دورك بعد نشر التحديث يعني اطلاعك عليه وقبولك به.']
+      ]
+    ] : [
+      ['استخدام المنصة', [
+        'استخدم دورك للعب والتواصل باحترام، ولا تستخدمه لإيذاء الآخرين أو تعطيل الغرف أو محاولة الوصول إلى حسابات غيرك.',
+        'أنت مسؤول عن اسم المستخدم وكلمة المرور والنشاط الذي يتم من حسابك.'
+      ]],
+      ['الغرف واللعب', [
+        'منشئ الغرفة مسؤول عن مشاركة رقم الغرفة أو رابطها مع الأشخاص الذين يريد دعوتهم.',
+        'لكل لعبة قواعدها الظاهرة قبل إنشاء الغرفة. الالتزام بها يحافظ على عدالة الجولة ومتعتها.',
+        'يجوز لإدارة دورك إيقاف غرفة أو حساب عند إساءة الاستخدام أو الإخلال بهذه الشروط.'
+      ]],
+      ['التذاكر', [
+        'تُخصم تذكرة واحدة من منشئ الغرفة عند إنشائها، بينما ينضم المدعوون مجانًا.',
+        'رصيد التذاكر ظاهر في حسابك قبل إنشاء الغرفة. لن تُنشأ غرفة مدفوعة عند عدم توفر رصيد كافٍ.'
+      ]],
+      ['المحتوى والسلوك', [
+        'لا تستخدم أسماء أو رسائل مسيئة، ولا تنشر محتوى غير قانوني أو ينتهك حقوق الآخرين.',
+        'يُمنع نسخ أو استخدام محتوى دورك، بما في ذلك الجولات والبطاقات والشعار، دون إذن مسبق من إدارة دورك.',
+        'لا تحاول نسخ المنصة أو التحايل على نظام الغرف أو التذاكر أو التأثير في نتائج اللعب بطرق غير عادلة.'
+      ]],
+      ['استمرارية الخدمة', [
+        'نعمل على إبقاء دورك متاحًا ومستقرًا، وقد نحدّث الميزات أو نوقف بعضها لتحسين المنصة أو حماية المستخدمين.',
+        'هذه الشروط قد تتغير مع تطوير الخدمة، ويُعد استمرار استخدامك للمنصة بعد نشرها قبولًا للتحديث.']
+      ]
+    ];
+    return '' +
+      '<main data-screen="legal" class="legal-page">' +
+        '<button class="back-btn" onclick="App.go(\'home\')">' + ICONS.back + ' الرئيسية</button>' +
+        '<div class="legal-head"><div class="eyebrow">دورك — تلعبها صح</div><h1>' + title + '</h1><p>' + intro + '</p><span>آخر تحديث: ١٩ يوليو ٢٠٢٦</span></div>' +
+        '<div class="legal-sections">' + sections.map((section) =>
+          '<section class="legal-section"><h2>' + section[0] + '</h2><ul>' + section[1].map((item) => '<li>' + item + '</li>').join('') + '</ul></section>'
+        ).join('') + '</div>' +
+        '<div class="legal-note">لأي استفسار يتعلق بالحساب أو الخصوصية، تواصل مع إدارة دورك.</div>' +
+        '<div class="footer-tag">دورك — تلعبها صح</div>' +
+      '</main>';
+  },
+
+  render() {
+    this.renderHeader();
+    const map = { home: 'screenHome', auth: 'screenAuth', game: 'screenGame', create: 'screenCreate', tickets: 'screenTickets', profile: 'screenProfile', privacy: 'screenLegal', terms: 'screenLegal' };
+    const fn = map[this.state.screen] || 'screenHome';
+    document.getElementById('screenRoot').innerHTML = fn === 'screenLegal' ? this[fn](this.state.screen) : this[fn]();
+  },
+
+  async init() {
+    this.setLoading(true);
+    await this.refreshMe();
+    const roomCode = new URLSearchParams(window.location.search).get('room');
+    if (roomCode && /^\d{6}$/.test(roomCode)) {
+      if (this.state.user) return this.continueJoin(roomCode);
+      this.state.pendingJoinCode = roomCode;
+      this.state.authError = 'سجّل دخولك للانضمام إلى الغرفة باسمك.';
+      this.state.screen = 'auth';
+    }
+    const page = window.location.hash.slice(1);
+    if (!roomCode && (page === 'privacy' || page === 'terms')) this.state.screen = page;
+    this.setLoading(false);
+    this.render();
+    window.addEventListener('hashchange', () => {
+      const next = window.location.hash.slice(1);
+      this.go(next === 'privacy' || next === 'terms' ? next : 'home');
+    });
+  },
+};
+
+document.addEventListener('DOMContentLoaded', () => App.init());

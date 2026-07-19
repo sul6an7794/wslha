@@ -1,0 +1,295 @@
+/* مافيا — Playable v3 (مطابق لملف design-reference.dc.html) */
+@font-face { font-family: 'ThmanyahSans'; src: url('../assets/fonts/thmanyahsans-Regular.woff2') format('woff2'); font-weight: 400; }
+@font-face { font-family: 'ThmanyahSans'; src: url('../assets/fonts/thmanyahsans-Medium.woff2') format('woff2'); font-weight: 500; }
+@font-face { font-family: 'ThmanyahSans'; src: url('../assets/fonts/thmanyahsans-Bold.woff2') format('woff2'); font-weight: 700; }
+@font-face { font-family: 'ThmanyahSans'; src: url('../assets/fonts/thmanyahsans-Black.woff2') format('woff2'); font-weight: 900; }
+@font-face { font-family: 'ThmanyahSerif'; src: url('../assets/fonts/thmanyahserifdisplay-Bold.woff2') format('woff2'); font-weight: 700; }
+@font-face { font-family: 'ThmanyahSerif'; src: url('../assets/fonts/thmanyahserifdisplay-Black.woff2') format('woff2'); font-weight: 900; }
+
+:root {
+  --bg: #0A0F16;
+  --text: #F2F4F7;
+  --text-dim: #A8AFB8;
+  --text-faint: #5A5F66;
+  --evil: #FF2D2D;
+  --evil-light: #FF2D2D;
+  --good: #00B7F0;
+  --good-light: #7FE7FF;
+  --gold: #C89A45;
+  --gold-light: #E0B86A;
+  --warn: #FFB15E;
+  --serif: 'ThmanyahSerif', serif;
+  --sans: 'ThmanyahSans', sans-serif;
+  --app-height: 100vh;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* { box-sizing: border-box; }
+
+@supports (height: 100dvh) {
+  :root { --app-height: 100dvh; }
+}
+
+html, body { margin: 0; padding: 0; min-height: 100vh; min-height: var(--app-height); }
+
+body {
+  direction: rtl;
+  background: #0A0F16;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 15px;
+  overflow-x: hidden;
+  min-height: var(--app-height);
+}
+
+.page-loader {
+  position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center;
+  background: #0A0F16; transition: opacity .22s ease, visibility .22s ease;
+}
+.page-loader.is-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+.page-loader__dots { display: flex; gap: 10px; direction: ltr; }
+.page-loader__dots span {
+  width: 14px; height: 14px; border-radius: 50%;
+  animation: pageLoaderPulse 1s ease-in-out infinite;
+}
+.page-loader__dots span:first-child { background: #FF2D2D; box-shadow: 0 0 12px rgba(255,45,45,.7); }
+.page-loader__dots span:last-child { background: #818cf8; box-shadow: 0 0 12px rgba(129,140,248,.7); animation-delay: .15s; }
+@keyframes pageLoaderPulse {
+  0%, 100% { opacity: .4; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.35); }
+}
+
+button { font-family: var(--sans); cursor: pointer; touch-action: manipulation; }
+button:disabled { cursor: not-allowed; }
+button, input, .big-btn, .vote-btn, .pick-tile { min-width: 0; max-width: 100%; }
+
+@keyframes phaseFade { 0% { opacity: 0; } 18% { opacity: 1; } 78% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes killFlash { 0% { opacity: 0; } 12% { opacity: 1; } 60% { opacity: 0.85; } 100% { opacity: 0; } }
+@keyframes stampIn { 0% { transform: scale(2.4) rotate(-18deg); opacity: 0; } 60% { transform: scale(0.95) rotate(-12deg); opacity: 1; } 100% { transform: scale(1) rotate(-12deg); opacity: 1; } }
+@keyframes riseIn { 0% { transform: translateY(18px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+@keyframes glowPulse { 0%, 100% { box-shadow: 0 0 18px rgba(255,45,45,0.35); } 50% { box-shadow: 0 0 34px rgba(255,45,45,0.7); } }
+@keyframes timerBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+@keyframes dotPulse { 0%, 100% { opacity: 0.25; transform: scale(0.85); } 50% { opacity: 1; transform: scale(1.15); } }
+@keyframes ringPulse { 0% { transform: scale(0.9); opacity: 0.7; } 100% { transform: scale(1.5); opacity: 0; } }
+@keyframes flicker { 0%, 100% { opacity: 1; } 91% { opacity: 1; } 92% { opacity: 0.4; } 93% { opacity: 1; } 96% { opacity: 0.75; } 97% { opacity: 1; } }
+@keyframes cardDrop { 0% { transform: translateY(-60px) rotate(6deg) scale(1.15); opacity: 0; } 55% { transform: translateY(6px) rotate(-2deg) scale(1); opacity: 1; } 100% { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; } }
+@keyframes edgePulse { 0%, 100% { box-shadow: inset 0 0 0 0 rgba(255,45,45,0); } 50% { box-shadow: inset 0 0 60px 8px rgba(255,45,45,0.28); } }
+@keyframes nightCurtain { 0% { opacity: 0; } 22% { opacity: 1; } 78% { opacity: 0.9; } 100% { opacity: 0; } }
+@keyframes dayBloom { 0% { opacity: 0; transform: scale(0.82); } 28% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.18); } }
+@keyframes lightShake { 0%, 100% { transform: translate3d(0,0,0); } 18% { transform: translate3d(-3px,1px,0); } 36% { transform: translate3d(3px,-1px,0); } 54% { transform: translate3d(-2px,-1px,0); } 72% { transform: translate3d(2px,1px,0); } }
+@keyframes nightPulse { 0%, 100% { box-shadow: inset 0 0 0 rgba(255,45,45,0); } 45% { box-shadow: inset 0 0 40px rgba(255,45,45,0.2); } }
+@keyframes votePop { 0% { transform: scale(0.82); opacity: 0.65; } 60% { transform: scale(1.22); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes accusedFrame { 0%, 100% { box-shadow: 0 0 0 rgba(255,45,45,0.16); } 50% { box-shadow: 0 0 22px rgba(255,45,45,0.38); } }
+@keyframes stampDropBig { 0% { transform: translateY(-44px) scale(1.75) rotate(-14deg); opacity: 0; } 48% { transform: translateY(4px) scale(0.94) rotate(-12deg); opacity: 1; } 70% { transform: translateY(-2px) scale(1.04) rotate(-12deg); } 100% { transform: translateY(0) scale(1) rotate(-12deg); opacity: 1; } }
+@keyframes winnerTitleGlow { 0% { opacity: 0; transform: translateY(10px); } 45% { opacity: 1; transform: translateY(0); } 100% { opacity: 1; text-shadow: 0 0 28px currentColor; } }
+@keyframes winnerCardIn { 0% { opacity: 0; transform: translateY(28px) scale(0.92); } 65% { opacity: 1; transform: translateY(-4px) scale(1.02); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes actionFadeIn { 0% { opacity: 0; transform: translateY(14px); } 100% { opacity: 1; transform: translateY(0); } }
+
+/* الإطار العام: عمود موبايل بالمنتصف فوق خلفيات المراحل */
+.app-shell {
+  position: relative;
+  min-height: 100vh;
+  min-height: var(--app-height);
+  width: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  padding: calc(16px + var(--safe-top)) 22px calc(30px + var(--safe-bottom));
+  background: #0D1420;
+  transition: filter 1s ease;
+  overflow-x: hidden;
+  isolation: isolate;
+}
+.app-shell.spectating { filter: grayscale(0.45) brightness(0.85); }
+.app-shell.fx-night-pulse { animation: nightPulse 0.9s ease both; }
+.app-shell.fx-hit-shake { animation: lightShake 0.38s ease both; }
+
+.app-shell.spectating .big-btn,
+.app-shell.spectating .vote-btn {
+  background: rgba(255,255,255,0.04) !important;
+  border-color: rgba(255,255,255,0.1) !important;
+  box-shadow: none !important;
+  color: var(--text-faint) !important;
+  animation: none !important;
+}
+
+.bg-layer { position: fixed; inset: 0; pointer-events: none; transition: opacity 1.4s ease; z-index: 0; }
+.bg-night {
+  background:
+    radial-gradient(420px 300px at 78% 6%, rgba(255,45,45,0.20), transparent 65%),
+    radial-gradient(320px 240px at 8% 65%, rgba(0,183,240,0.12), transparent 65%),
+    linear-gradient(180deg, #1B0A0F, #0A0F16 62%);
+}
+.bg-day {
+  background:
+    radial-gradient(420px 280px at 22% 6%, rgba(255,177,94,0.13), transparent 65%),
+    linear-gradient(180deg, #303640, #1A2028 55%, #111820);
+}
+.bg-vignette {
+  position: fixed; inset: 0; pointer-events: none; z-index: 1;
+  background: linear-gradient(0deg, rgba(5,8,13,0.28), rgba(5,8,13,0.03));
+}
+.edge-danger { position: fixed; inset: 0; pointer-events: none; z-index: 60; animation: edgePulse 1s ease-in-out infinite; }
+
+.app-content { position: relative; z-index: 2; flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.app-content, .night-footer, .vote-actions, .gameover-actions, .lobby-panel { min-width: 0; max-width: 100%; }
+
+/* شريط الحالة العلوي */
+.status-bar {
+  position: relative; display: flex; justify-content: space-between; align-items: center;
+  font-size: 15px; font-weight: 700; color: var(--text-dim);
+  min-height: 32px; gap: 12px;
+}
+.status-brand {
+  font-family: var(--serif); font-weight: 900; font-size: 24px; line-height: 1;
+  color: var(--evil); transform: skewX(-7deg); transform-origin: right center;
+  text-shadow: 0 0 14px rgba(255,45,45,0.42), 0 1px 0 rgba(0,0,0,0.55);
+}
+.status-mark {
+  display: flex; align-items: center; gap: 5px; direction: ltr;
+  text-decoration: none; cursor: pointer;
+}
+.status-mark-word {
+  font-family: var(--serif); font-weight: 900; font-size: 24px; line-height: 1;
+  color: #fff; letter-spacing: 0;
+  text-shadow: 0 0 10px rgba(255,255,255,0.22);
+}
+.status-mark-dots { display: flex; gap: 2px; }
+.status-mark-dots span { width: 4px; height: 4px; border-radius: 50%; }
+.status-mark-dots span:first-child { background: #FF2D2D; box-shadow: 0 0 4px rgba(255,45,45,0.7); }
+.status-mark-dots span:last-child { background: #818cf8; box-shadow: 0 0 4px rgba(129,140,248,0.7); }
+.small-btn {
+  font-weight: 700; font-size: 12px; padding: 4px 12px; border-radius: 999px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.16); color: var(--text-faint);
+  transition: all 0.3s;
+}
+.small-btn.on { background: rgba(0,183,240,0.16); border-color: var(--good); color: var(--good-light); }
+
+.spectator-chip {
+  margin-top: 10px; text-align: center; font-size: 12px; font-weight: 700; padding: 6px 14px;
+  border-radius: 999px; background: rgba(90,95,102,0.3); border: 1px solid rgba(168,175,184,0.35);
+  color: var(--text-dim); align-self: center;
+}
+
+.connection-chip {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  border-radius: 999px;
+  background: #fbbf24;
+  box-shadow: 0 0 8px rgba(251,191,36,0.75);
+}
+.connection-chip.online { background: #4ade80; box-shadow: 0 0 8px rgba(74,222,128,0.82); }
+.connection-chip.offline { background: #f87171; box-shadow: 0 0 8px rgba(248,113,113,0.72); }
+/* شعار مافيا */
+.logo-box {
+  display: inline-flex; flex-direction: column; align-items: center; position: relative;
+  border: 2px solid rgba(255,45,45,0.85); border-radius: 16px; padding: 12px 34px 18px;
+  box-shadow: 0 0 22px rgba(255,45,45,0.35), inset 0 0 22px rgba(255,45,45,0.12);
+}
+.logo-box .dot { position: absolute; top: 8px; width: 5px; height: 5px; border-radius: 50%; background: var(--gold); }
+.logo-box .dot.r { right: 12px; }
+.logo-box .dot.l { left: 12px; }
+.logo-latin { font-weight: 700; font-size: 10px; letter-spacing: 0.55em; color: var(--gold-light); margin-bottom: 2px; }
+.logo-ar {
+  font-family: var(--serif); font-feature-settings: 'salt' 1; font-weight: 900;
+  font-size: 54px; line-height: 1.1; color: var(--evil);
+  text-shadow: 0 0 22px rgba(255,45,45,0.6), 0 2px 0 rgba(0,0,0,0.6);
+}
+
+/* عناوين وعناصر عامة */
+.serif-title { font-family: var(--serif); font-weight: 900; }
+.kicker { font-size: 12px; letter-spacing: 0; color: var(--gold); font-weight: 700; line-height: 1.7; }
+.rise { animation: riseIn 0.5s ease both; }
+
+.chip {
+  font-size: 12px; font-weight: 700; padding: 6px 14px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px;
+  min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: break-word; word-break: normal;
+}
+.chip-night { background: rgba(255,45,45,0.14); border: 1px solid rgba(255,45,45,0.5); color: var(--evil-light); }
+.chip-night-solid { background: rgba(255,45,45,0.18); border: 1px solid var(--evil); color: var(--evil-light); border-radius: 8px; }
+.chip-day { background: rgba(90,95,102,0.25); border: 1px solid rgba(168,175,184,0.4); color: var(--text); }
+.chip-vote { background: rgba(255,177,94,0.14); border: 1px solid rgba(255,177,94,0.5); color: var(--warn); }
+.chip-gold { background: rgba(200,154,69,0.14); border: 1px solid rgba(200,154,69,0.6); color: var(--gold-light); }
+.chip-blue { background: rgba(0,183,240,0.14); border: 1px solid var(--good); color: var(--good-light); }
+
+.timer {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 58px; min-width: 58px; height: 30px; flex: 0 0 58px;
+  font-weight: 900; font-size: 24px; line-height: 1; color: var(--warn);
+  font-variant-numeric: tabular-nums; direction: ltr; text-align: center;
+}
+.timer.low { color: var(--evil); animation: timerBlink 1s ease-in-out infinite; }
+
+.low-warning { text-align: center; font-size: 12.5px; color: var(--evil); font-weight: 700; animation: timerBlink 1s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .bg-layer { transition-duration: 0.35s; }
+  .app-shell {
+    transition: none;
+    min-height: var(--app-height);
+  }
+  .app-shell.fx-night-pulse,
+  .app-shell.fx-hit-shake,
+  .edge-danger {
+    animation: none;
+  }
+  .logo-box {
+    box-shadow: 0 0 12px rgba(255,45,45,0.24), inset 0 0 12px rgba(255,45,45,0.08);
+  }
+  .logo-ar {
+    text-shadow: 0 0 14px rgba(255,45,45,0.45), 0 2px 0 rgba(0,0,0,0.6);
+  }
+}
+
+/* الأزرار الرئيسية */
+.big-btn {
+  width: 100%; display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 17px; height: 52px; border-radius: 12px; transition: all 0.4s;
+  color: #FFF; padding-inline: 12px; text-align: center; line-height: 1.3; overflow-wrap: break-word; word-break: normal;
+}
+.big-btn.blue { background: linear-gradient(180deg, rgba(0,183,240,0.28), rgba(0,80,120,0.34)); border: 1px solid var(--good); box-shadow: 0 0 16px rgba(0,183,240,0.35); }
+.big-btn.red { background: linear-gradient(180deg, rgba(255,45,45,0.28), rgba(90,0,0,0.34)); border: 1px solid var(--evil); }
+.big-btn.red.armed { animation: glowPulse 2s ease-in-out infinite; }
+.big-btn.gold { background: linear-gradient(180deg, rgba(200,154,69,0.32), rgba(100,70,20,0.36)); border: 1px solid var(--gold); }
+.big-btn.idle { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: var(--text-faint); box-shadow: none; animation: none; }
+.big-btn.ghost { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.10); color: var(--text-dim); }
+
+.hint-line { text-align: center; font-size: 13px; min-height: 20px; }
+.muted-note { text-align: center; font-size: 12.5px; color: var(--text-faint); }
+
+/* حقول اللوبي */
+input.field {
+  min-height: 50px; width: 100%; padding: 0 16px; border-radius: 12px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.14);
+  color: var(--text); font-family: var(--sans); font-size: 16px; line-height: normal;
+}
+input.field:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(200,154,69,0.2); }
+.room-code-input { letter-spacing: 0; }
+.room-code-input::placeholder { letter-spacing: 0; }
+.room-code-input:not(:placeholder-shown) {
+  direction: ltr;
+  letter-spacing: 0;
+  padding-inline-start: 16px;
+}
+
+/* التمرير */
+.scroll-y { overflow-y: auto; min-height: 0; }
+.scroll-y::-webkit-scrollbar { width: 4px; }
+.scroll-y::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
