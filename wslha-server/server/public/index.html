@@ -189,60 +189,6 @@
 <div style="height:90px;"></div>
 </sc-if>
 
-<!-- HOME -->
-<sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
-<div style="position:relative; z-index:1; animation:tqIn .4s ease;" data-screen-label="Home">
-  <div class="whero" style="max-width:780px; margin:0 auto; padding:40px 28px 56px; text-align:center;">
-    <h1 class="wslha-kashida" style="font-size:clamp(44px,10vw,104px); font-weight:900; line-height:1.18; margin:12px 0 18px; padding-top:8px;"><span style="background:linear-gradient(135deg,#818cf8,#ec4899); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">وصّلـها</span></h1>
-    <p style="font-size:clamp(16px,3vw,24px); font-weight:800; color:#f1f0ff; margin:0 0 20px;">اشرحها صح… ولا تضيعهم</p>
-    <p style="font-size:16px; color:#a9a7cc; line-height:1.8; margin:0 auto 34px; max-width:540px;">كل فريق من ٣ لاعبين يشوف ٣ صور مختلفة، ونقاش واحد يوصلكم للإجابة،<br>وغلطة وحدة توقفكم ١٥ ثانية… فمافي مجال للهبد.</p>
-    <div style="display:flex; gap:14px; flex-wrap:wrap; justify-content:center;">
-      <button onClick="{{ goCreate }}" style="display:flex; align-items:center; gap:8px; font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:18px; color:#fff; background:linear-gradient(135deg,#818cf8,#ec4899); border:none; padding:16px 34px; border-radius:16px; cursor:pointer; white-space:nowrap; box-shadow:0 16px 40px rgba(236,72,153,.45);" style-hover="filter:brightness(1.08);">{{ iconPlus }} ابدأ التحدي</button>
-      <button onClick="{{ goJoin }}" style="display:flex; align-items:center; gap:8px; font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:18px; color:#f1f0ff; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.16); padding:16px 34px; border-radius:16px; cursor:pointer; white-space:nowrap;" style-hover="background:rgba(255,255,255,.1);">{{ iconEnter }} الانضمام إلى غرفة</button>
-    </div>
-  </div>
-
-  <div style="max-width:1100px; margin:0 auto; padding:0 28px 80px;">
-    <div style="text-align:center; margin-bottom:40px;">
-      <div style="font-size:14px; font-weight:700; color:#818cf8; letter-spacing:2px; margin-bottom:12px;">المميزات</div>
-      <h2 style="font-size:clamp(26px,4vw,40px); font-weight:900; margin:0;">لماذا <span class="wslha-kashida">وصّلـها</span>؟</h2>
-    </div>
-    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:20px;">
-      <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:20px; padding:28px; animation:featIn .55s ease both; animation-delay:0ms;">
-        <div style="width:50px; height:50px; background:rgba(129,140,248,.15); border-radius:14px; display:flex; align-items:center; justify-content:center; color:#818cf8; margin-bottom:16px;">{{ iconUsers }}</div>
-        <h3 style="font-size:18px; font-weight:800; margin:0 0 8px;">كل فريق من ٣</h3>
-        <p style="font-size:14px; color:#a9a7cc; margin:0; line-height:1.6;">كل لاعب يشوف صورة مختلفة — تفاهمكم هو سرّ الفوز.</p>
-      </div>
-      <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:20px; padding:28px; animation:featIn .55s ease both; animation-delay:80ms;">
-        <div style="width:50px; height:50px; background:rgba(236,72,153,.15); border-radius:14px; display:flex; align-items:center; justify-content:center; color:#ec4899; margin-bottom:16px;">{{ iconClock }}</div>
-        <h3 style="font-size:18px; font-weight:800; margin:0 0 8px;">الوقت ضدكم</h3>
-        <p style="font-size:14px; color:#a9a7cc; margin:0; line-height:1.6;">الساعة شغّالة من أول ثانية — خلصوا قبل ما يوقفكم الغلط.</p>
-      </div>
-      <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:20px; padding:28px; animation:featIn .55s ease both; animation-delay:160ms;">
-        <div style="width:50px; height:50px; background:rgba(56,189,248,.15); border-radius:14px; display:flex; align-items:center; justify-content:center; color:#38bdf8; margin-bottom:16px;">{{ iconImg }}</div>
-        <h3 style="font-size:18px; font-weight:800; margin:0 0 8px;">صورتك سرّ</h3>
-        <p style="font-size:14px; color:#a9a7cc; margin:0; line-height:1.6;">كل واحد قدامه صورة غير — وسلاحك الوحيد كلامك.</p>
-      </div>
-      <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:20px; padding:28px; animation:featIn .55s ease both; animation-delay:240ms;">
-        <div style="width:50px; height:50px; background:rgba(129,140,248,.15); border-radius:14px; display:flex; align-items:center; justify-content:center; color:#818cf8; margin-bottom:16px;">{{ iconLock }}</div>
-        <h3 style="font-size:18px; font-weight:800; margin:0 0 8px;">غرفتك الخاصة</h3>
-        <p style="font-size:14px; color:#a9a7cc; margin:0; line-height:1.6;">سوِّ غرفة وجمّع فريقك برقم من ٦ أرقام بس.</p>
-      </div>
-      <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:20px; padding:28px; animation:featIn .55s ease both; animation-delay:320ms;">
-        <div style="width:50px; height:50px; background:rgba(236,72,153,.15); border-radius:14px; display:flex; align-items:center; justify-content:center; color:#ec4899; margin-bottom:16px;">{{ iconShare }}</div>
-        <h3 style="font-size:18px; font-weight:800; margin:0 0 8px;">جمّعهم بثانية</h3>
-        <p style="font-size:14px; color:#a9a7cc; margin:0; line-height:1.6;">شارك رمز QR أو الرابط، وخلّهم يلحقونك.</p>
-      </div>
-      <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:20px; padding:28px; animation:featIn .55s ease both; animation-delay:400ms;">
-        <div style="width:50px; height:50px; background:rgba(251,191,36,.15); border-radius:14px; display:flex; align-items:center; justify-content:center; color:#fbbf24; margin-bottom:16px;">{{ iconTrophy }}</div>
-        <h3 style="font-size:18px; font-weight:800; margin:0 0 8px;">مين البطل؟</h3>
-        <p style="font-size:14px; color:#a9a7cc; margin:0; line-height:1.6;">ترتيب لحظي للفرق، والفايز يتتوّج بعد آخر جولة.</p>
-      </div>
-    </div>
-  </div>
-</div>
-</sc-if>
-
 <!-- JOIN -->
 <sc-if value="{{ isJoin }}" hint-placeholder-val="{{ false }}">
 <div style="position:relative; z-index:1; max-width:480px; margin:0 auto; padding:64px 24px 80px; animation:tqIn .4s ease;" data-screen-label="Join">
@@ -673,7 +619,7 @@
     </sc-for>
   </div>
   <div style="display:flex; gap:12px; flex-wrap:wrap;">
-    <button onClick="{{ shareResults }}" style="flex:1; min-width:160px; font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:16px; color:#c4b5fd; background:rgba(129,140,248,.12); border:1px solid rgba(129,140,248,.35); padding:15px; border-radius:16px; cursor:pointer;" style-hover="background:rgba(129,140,248,.22); color:#fff;">{{ resultsShareLabel }}</button>
+    <button onClick="{{ shareResults }}" disabled="{{ resultsShareBusy }}" style="flex:1; min-width:160px; font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:16px; color:#c4b5fd; background:rgba(129,140,248,.12); border:1px solid rgba(129,140,248,.35); padding:15px; border-radius:16px; cursor:pointer;" style-hover="background:rgba(129,140,248,.22); color:#fff;">{{ resultsShareLabel }}</button>
     <button onClick="{{ goCreate }}" style="flex:1; min-width:160px; font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:16px; color:#fff; background:linear-gradient(135deg,#818cf8,#ec4899); border:none; padding:15px; border-radius:16px; cursor:pointer; box-shadow:0 14px 32px rgba(236,72,153,.45);" style-hover="filter:brightness(1.08);">يلا نعيدها</button>
     <button onClick="{{ goHome }}" style="flex:1; min-width:160px; font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:16px; color:#f1f0ff; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14); padding:15px; border-radius:16px; cursor:pointer;" style-hover="background:rgba(255,255,255,.1);">الرئيسية</button>
   </div>
@@ -684,6 +630,23 @@
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;100%&quot;,&quot;height&quot;:820},&quot;apiUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;الخادم&quot;}}">
 function arNum(v) { return String(v).replace(/[0-9]/g, d => '٠١٢٣٤٥٦٧٨٩'[d]); }
 
+// تحميل مؤجّل لأداة التقاط الصورة (html2canvas) — تُستخدم فقط بزر "مشاركة النتيجة كصورة"،
+// فلا داعي تُحمَّل مع كل زيارة للصفحة.
+const H2C_URL = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+let h2cLoading = null;
+function loadHtml2Canvas() {
+  if (window.html2canvas) return Promise.resolve(window.html2canvas);
+  if (h2cLoading) return h2cLoading;
+  h2cLoading = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = H2C_URL;
+    s.onload = () => resolve(window.html2canvas);
+    s.onerror = () => reject(new Error('تعذّر تحميل أداة الصورة'));
+    document.head.appendChild(s);
+  });
+  return h2cLoading;
+}
+
 // تصنيف الجولة: وسم تنظيمي يحدده المشرف فقط من لوحة التحكم — لا يظهر ولا يؤثر على اللاعب أبدًا.
 const CATEGORY_LIST = ['الاختلاف', 'تحدي الصور', 'معادلات', 'أعلام', 'خرائط', 'أمثله', 'ترتيب', 'الشعار الصح'];
 
@@ -691,10 +654,10 @@ class Component extends DCLogic {
   state = {
     // تحويل تلقائي من منصة دورك (?autoCreate=1): نبدأ من صفحة "إنشاء غرفة" مباشرة بدل
     // الصفحة الرئيسية (اللي ما لها أي داعي لمن جاي أصلًا من المنصة عشان يلعب فورًا).
-    page: (() => {
-      try { return new URLSearchParams(location.search).get('autoCreate') === '1' ? 'create' : 'home'; }
-      catch (e) { return 'home'; }
-    })(),
+    // لا صفحة "رئيسية" داخلية لوصّلها بعد الآن (زيارة /wslha/ المباشرة بلا سياق تُعاد فورًا
+    // لمنصة دورك عبر السكربت بأعلى الملف) — "create" قيمة ابتدائية آمنة لحين تحديد الشاشة
+    // الفعلية (إنشاء/انضمام/استرجاع) خلال componentDidMount.
+    page: 'create',
     maxPlayers: 3, created: false, roomCode: '',
     user: null,
     loading: false, offline: false, joinCode: '', joinName: '',
@@ -704,7 +667,7 @@ class Component extends DCLogic {
     connected: false, serverImage: null, lobbyPlayers: [], statusMsg: '', deviceId: null,
     // لوحة التحكم
     adminRounds: [], adminStats: null, newHint: '', newAnswers: '', newQuestion: '', newCategory: CATEGORY_LIST[0], adminMsg: '', editingCategoryId: null,
-    serverTeams: [], myTeamIndex: null, namingTeam: null, teamNameInput: '', startRequested: false, shareCopied: false, zoomOpen: false, countdown: 0,
+    serverTeams: [], myTeamIndex: null, namingTeam: null, teamNameInput: '', startRequested: false, shareCopied: false, resultsShareBusy: false, resultsShareDone: false, zoomOpen: false, countdown: 0,
     // الحساب: القوائم والتذاكر وتعديل الملف
     menuOpen: false, creditOpen: false, editMode: false, editSection: null,
     profileName: '', profileMsg: '', profileMsgType: '',
@@ -871,15 +834,32 @@ class Component extends DCLogic {
     setTimeout(() => this.setState({ shareCopied: false }), 1800);
   }
 
+  // يلتقط بطاقة النتائج كصورة (html2canvas) ويشاركها (Web Share على الجوال) أو ينزّلها.
   shareResults() {
-    const top = (this.state.serverResults || []).slice().sort((a, b) => (b.score - a.score) || (a.elapsed - b.elapsed))[0];
-    const text = top ? ('خلصنا وصّلها! الفائز: ' + top.name + ' بنتيجة ' + top.score) : 'خلصنا وصّلها!';
-    try {
-      if (navigator.share) navigator.share({ title: 'نتيجة وصّلها', text }).catch(() => {});
-      else if (navigator.clipboard) navigator.clipboard.writeText(text);
-    } catch (e) {}
-    this.setState({ shareCopied: true });
-    setTimeout(() => this.setState({ shareCopied: false }), 1800);
+    if (this.state.resultsShareBusy) return;
+    const target = document.querySelector('[data-screen-label="Results"]');
+    if (!target) return;
+    this.setState({ resultsShareBusy: true });
+    loadHtml2Canvas()
+      .then((h2c) => h2c(target, { backgroundColor: '#0a081e', scale: Math.min(2, window.devicePixelRatio || 1), useCORS: true, logging: false }))
+      .then((canvas) => new Promise((res) => canvas.toBlob((b) => res(b), 'image/png')))
+      .then((blob) => {
+        if (!blob) throw new Error('فشل إنشاء الصورة');
+        const file = new File([blob], 'wasselha-result.png', { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          return navigator.share({ files: [file], title: 'نتيجة وصّلها', text: 'شوف نتيجتنا في وصّلها! 🎯' }).catch(() => {});
+        }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'wasselha-result.png';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+      })
+      .catch((e) => { alert((e && e.message) || 'تعذّرت المشاركة'); })
+      .then(() => {
+        this.setState({ resultsShareBusy: false, resultsShareDone: true });
+        setTimeout(() => this.setState({ resultsShareDone: false }), 1800);
+      });
   }
 
   localTeams(n) {
@@ -1093,7 +1073,8 @@ class Component extends DCLogic {
     this.api('/api/auth/logout', { method: 'POST' }).catch(() => {});
     this._clearSession();
     this.setState({ user: null, connected: false, menuOpen: false, creditOpen: false, editMode: false, credits: 10 });
-    this.go('home');
+    // ما فيه صفحة رئيسية داخلية بعد الآن — نفس منطق goHome.
+    window.location.href = '/';
   }
   setJoinCode(e) { this.setState({ joinCode: e.target.value.replace(/\D/g, '').slice(0, 6) }); }
   setJoinName(e) { this.setState({ joinName: e.target.value }); }
@@ -1277,12 +1258,14 @@ class Component extends DCLogic {
     };
 
     const navBase = [
-      { label: 'الرئيسية', page: 'home' },
+      // "الرئيسية" هنا ترجع فعليًا لمنصة دورك (زي goHome بالأسفل بالضبط) — ما فيه صفحة
+      // رئيسية داخلية لوصّلها بعد الآن.
+      { label: 'الرئيسية', page: 'home', go: () => { window.location.href = '/'; } },
       { label: 'كيف تلعب', page: 'how' },
       { label: 'عن اللعبة', page: 'about' },
     ];
     const navItems = navBase.map(n => ({
-      label: n.label, go: () => this.go(n.page),
+      label: n.label, go: n.go || (() => this.go(n.page)),
       bg: n.page === page ? 'rgba(129,140,248,.15)' : 'transparent',
       col: n.page === page ? '#c4b5fd' : '#a9a7cc',
     }));
@@ -1335,7 +1318,7 @@ class Component extends DCLogic {
       goHome: () => { window.location.href = '/'; }, goCreate: () => this.go('create'), goHow: () => this.go('how'), goAbout: () => this.go('about'),
       leaveLobby: () => this.leaveLobby(),
       goLogin: () => { window.location.href = '/'; }, goJoin: () => this.go('join'), goGame: () => this.go('game'),
-      isHome: page === 'home', isCreate: page === 'create', isHow: page === 'how', isAbout: page === 'about',
+      isCreate: page === 'create', isHow: page === 'how', isAbout: page === 'about',
       isJoin: page === 'join', isGame: page === 'game', isResults: page === 'results', notGame: false,
       isLobby: page === 'lobby', isAdmin: page === 'admin', isTeams: page === 'teams',
       showCountdown: this.state.countdown > 0,
@@ -1466,7 +1449,9 @@ class Component extends DCLogic {
       roomCode: arNum(this.state.roomCode), qrCells: this.qrCells(), qrSrc: 'https://api.qrserver.com/v1/create-qr-code/?size=190x190&margin=6&bgcolor=15122e&color=f1f0ff&data=' + encodeURIComponent(this.shareUrl()),
       shareUrl: this.shareUrl(), copyShare: () => this.copyShare(),
       shareBtnLabel: this.state.shareCopied ? 'تم النسخ' : 'نسخ الرابط',
-      shareResults: () => this.shareResults(), resultsShareLabel: this.state.shareCopied ? 'تم النسخ' : 'مشاركة النتيجة',
+      shareResults: () => this.shareResults(),
+      resultsShareLabel: this.state.resultsShareBusy ? 'جارِ التجهيز…' : (this.state.resultsShareDone ? 'تمت المشاركة ✓' : 'مشاركة النتيجة كصورة'),
+      resultsShareBusy: this.state.resultsShareBusy,
       elapsedDisplay, roundNumber: arNum(ri + 1), roundTotal: arNum(total), hintShown: this.state.hintShown, hintText: this.state.hintText || '',
       playerLabel: uname + ' · ' + arNum(activeCode),
       currentImageEl: React.createElement('img', { src: this.state.serverImage || cur.src, alt: 'صورة الجولة', style: { width: '100%', maxHeight: '62vh', objectFit: 'contain', display: 'block', margin: '0 auto' } }),
@@ -1493,12 +1478,11 @@ class Component extends DCLogic {
       iconMicLg: I(ic.mic, 26, '#818cf8'),
       trophyIcon: I(ic.trophy, 34, '#3b2a06'),
       resultsTeams: rt, winnerName: rt[0].name, winnerScore: arNum(this.state.resultsTickerScore + ' / ' + rtTotal), winnerTime: rt[0].timeStr,
-      iconUsers: I(ic.users, 22), iconClock: I(ic.clock, 22), iconLock: I(ic.lock, 22), iconShare: I(ic.share, 22), iconTrophy: I(ic.trophy, 22),
-      iconImg: I(ic.img, 18), iconPlus: I(ic.plus, 18), iconEnter: I(ic.enter, 18), iconEnterLg: I(ic.enter, 26, '#fff'),
+      iconImg: I(ic.img, 18), iconEnterLg: I(ic.enter, 26, '#fff'),
       iconSend: I(ic.send, 17), iconClockLg: I(ic.clock, 24, '#34d399'), iconLockLg: I(ic.lock, 26), iconShareSm: I(ic.share, 15),
     };
   }
 }
 </script>
-<script src="/enter-submit.js" defer></script><script src="/share-result.js" defer></script><script src="/admin-users.js" defer></script><script src="/ripple.js" defer></script></body>
+<script src="/enter-submit.js" defer></script><script src="/admin-users.js" defer></script><script src="/ripple.js" defer></script></body>
 </html>
