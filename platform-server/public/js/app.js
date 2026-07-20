@@ -116,7 +116,7 @@ const App = {
 
   requireLogin(next) {
     if (this.state.user) return true;
-    this.state.pendingCreate = next === 'create';
+    this.state.pendingCreate = next || false;
     this.state.authError = '';
     this.go('auth');
     return false;
@@ -131,12 +131,8 @@ const App = {
   },
 
   beginJoin(code) {
-    if (!this.state.user) {
-      this.state.pendingJoinCode = code;
-      this.state.authError = 'سجّل دخولك للانضمام إلى الغرفة باسمك.';
-      this.go('auth');
-      return;
-    }
+    // الانضمام مجاني ومباشر بلا حساب دورك — نفس تجربة فتح رابط الغرفة مباشرة، بلا فرق
+    // إذا كتب اللاعب الرقم يدويًا هنا أو ضغط رابطًا جاهزًا.
     this.continueJoin(code);
   },
 
@@ -312,6 +308,9 @@ const App = {
     if (this.state.creating) return;
     this.state.creating = true;
     this.render();
+    // إنشاء الغرفة يشمل طلب شبكة ثم تحويل كامل لصفحة اللعبة — قد يتأخر شوي (خصوصًا مافيا).
+    // بدون هذا، الزر يتغيّر نصه بس والشاشة تحس وكأنها متجمّدة لثانيتين قبل التحويل الفعلي.
+    this.setLoading(true);
     try {
       if (this.state.game === 'mafia') {
         const { credits, rt } = await this.api('/api/rooms/mafia', { method: 'POST' });
@@ -323,6 +322,7 @@ const App = {
       }
     } catch (e) {
       this.state.creating = false;
+      this.setLoading(false);
       this.showToast(e.message);
       this.render();
     }
@@ -689,10 +689,7 @@ const App = {
     await this.refreshMe();
     const roomCode = new URLSearchParams(window.location.search).get('room');
     if (roomCode && /^\d{6}$/.test(roomCode)) {
-      if (this.state.user) return this.continueJoin(roomCode);
-      this.state.pendingJoinCode = roomCode;
-      this.state.authError = 'سجّل دخولك للانضمام إلى الغرفة باسمك.';
-      this.state.screen = 'auth';
+      return this.continueJoin(roomCode);
     }
     const page = window.location.hash.slice(1);
     if (!roomCode && (page === 'privacy' || page === 'terms')) this.state.screen = page;
