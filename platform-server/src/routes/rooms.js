@@ -3,6 +3,7 @@ const { authMiddleware } = require('../auth');
 const db = require('../db');
 const registry = require('../rooms-registry');
 const { rateLimit } = require('../rateLimit');
+const asyncHandler = require('../async-handler');
 
 const router = express.Router();
 
@@ -18,7 +19,7 @@ router.get('/:code', (req, res) => {
 // مافيا ما عندها مفهوم حسابات/تذاكر إطلاقًا — المنصة تتحقق من الرصيد وتخصم تذكرة هنا
 // قبل ما تحوّل المتصفح لصفحة مافيا (اللي بدورها تنشئ الغرفة تلقائيًا عبر autoCreate).
 // وصّلها لا تحتاج هذا المسار: السوكيت عندها أصلًا يتحقق من الرصيد ويخصم بنفسه.
-router.post('/mafia', authMiddleware, async (req, res) => {
+router.post('/mafia', authMiddleware, asyncHandler(async (req, res) => {
   const user = db.getUserById(req.user.id);
   if (!user) return res.status(401).json({ error: 'الحساب غير موجود' });
   const charged = await global.__DOURK_PLATFORM__.credits.charge(user.id, 'mafia-room-create');
@@ -27,6 +28,6 @@ router.post('/mafia', authMiddleware, async (req, res) => {
   // تذكرة غرفة لمرة واحدة: مافيا لازم تتحقق منها قبل إنشاء الغرفة، وإلا تُرجع تلقائيًا لو ما استُخدمت.
   const rt = global.__DOURK_PLATFORM__.tickets.issue(user.id);
   res.json({ ok: true, credits, rt });
-});
+}));
 
 module.exports = router;

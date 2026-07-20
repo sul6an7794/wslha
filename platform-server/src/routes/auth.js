@@ -4,6 +4,7 @@ const db = require('../db');
 const { signToken, authMiddleware, setAuthCookie, clearAuthCookie } = require('../auth');
 const { rateLimit } = require('../rateLimit');
 const authentica = require('../authentica');
+const asyncHandler = require('../async-handler');
 
 // تمثيل عام للمستخدم (بدون رقم الجوال) — يُرسل للواجهة.
 function publicUser(u) {
@@ -56,19 +57,27 @@ router.post('/otp/verify', otpVerifyLimit, async (req, res) => {
   } catch (e) {
     return res.status(e.status && e.status < 500 ? 401 : 500).json({ error: e.message });
   }
-  let user = db.getUserByPhone(phone);
-  if (!user) {
-    let name = String(username || '').trim();
-    if (!name || !NAME_RE.test(name)) name = randomDisplayName();
-    // لا يمنح أي تسجيل عام صلاحية مشرف. التهيئة الأولى تتطلب اسمًا ورمزًا سريًا من بيئة الخادم.
-    const hasAdmin = db.getAllUsers().some((existing) => !!existing.isAdmin);
-    const isAdmin = !hasAdmin && isBootstrapAdmin(name, bootstrapToken);
-    user = await db.insertUser({ username: name, phone, is_admin: isAdmin });
+  // أمان تشغيلي: أي خطأ بقاعدة البيانات هنا (Mongo متعطّل مؤقتًا، تصادم فهرس فريد بسباق نادر...)
+  // لازم يرجع 500 مهذّب بدل ما يسقط بـException غير مُمسوك — استثناء غير مُمسوك بـhandler
+  // غير متزامن يُسقط عملية Node بالكامل (كل المستخدمين، مو بس هذا الطلب).
+  try {
+    let user = db.getUserByPhone(phone);
+    if (!user) {
+      let name = String(username || '').trim();
+      if (!name || !NAME_RE.test(name)) name = randomDisplayName();
+      // لا يمنح أي تسجيل عام صلاحية مشرف. التهيئة الأولى تتطلب اسمًا ورمزًا سريًا من بيئة الخادم.
+      const hasAdmin = db.getAllUsers().some((existing) => !!existing.isAdmin);
+      const isAdmin = !hasAdmin && isBootstrapAdmin(name, bootstrapToken);
+      user = await db.insertUser({ username: name, phone, is_admin: isAdmin });
+    }
+    const token = signToken(user);
+    setAuthCookie(req, res, token);
+    // نرجّع التوكن بالجسم كمان للنسخة المستقلة من الواجهة (أصل مختلف ما توصله الكوكي).
+    res.json({ token, user: publicUser(user) });
+  } catch (e) {
+    console.error('otp/verify: خطأ غير متوقع بعد التحقق من الرمز:', e);
+    res.status(500).json({ error: 'تعذّر إتمام تسجيل الدخول حاليًا، حاول مرة ثانية' });
   }
-  const token = signToken(user);
-  setAuthCookie(req, res, token);
-  // نرجّع التوكن بالجسم كمان للنسخة المستقلة من الواجهة (أصل مختلف ما توصله الكوكي).
-  res.json({ token, user: publicUser(user) });
 });
 
 // تسجيل الخروج: يمسح كوكي الجلسة (الكوكي HttpOnly فما يقدر الجافاسكربت يمسحه بنفسه).
@@ -90,7 +99,7 @@ router.get('/me/credits-log', authMiddleware, (req, res) => {
 });
 
 // تعديل الملف الشخصي: تغيير الاسم فقط (لا كلمة مرور بعد الآن).
-router.patch('/profile', profileLimit, authMiddleware, async (req, res) => {
+router.patch('/profile', profileLimit, authMiddleware, asyncHandler(async (req, res) => {
   const user = db.getUserById(req.user.id);
   if (!user) return res.status(404).json({ error: 'الحساب غير موجود' });
 
@@ -118,11 +127,11 @@ router.patch('/profile', profileLimit, authMiddleware, async (req, res) => {
   const token = fields.username ? signToken(updated) : undefined;
   if (token) setAuthCookie(req, res, token);
   res.json({ user: publicUser(updated), token });
-});
+}));
 
 // حذف الحساب: الكوكي HttpOnly نفسه إثبات الملكية (نفس منطق الثقة في authMiddleware) — لا كلمة
 // مرور نعيد التأكد منها بعد الآن، وإعادة طلب OTP هنا كانت ستزيد الاحتكاك بلا فائدة أمنية حقيقية.
-router.delete('/profile', profileLimit, authMiddleware, async (req, res) => {
+router.delete('/profile', profileLimit, authMiddleware, asyncHandler(async (req, res) => {
   const user = db.getUserById(req.user.id);
   if (!user) return res.status(404).json({ error: 'الحساب غير موجود' });
   if (user.is_admin && db.getAllUsers().filter((existing) => !!existing.isAdmin).length === 1) {
@@ -131,6 +140,6 @@ router.delete('/profile', profileLimit, authMiddleware, async (req, res) => {
   await db.deleteUser(user.id);
   clearAuthCookie(req, res);
   res.json({ ok: true });
-});
+}));
 
 module.exports = router;

@@ -111,6 +111,15 @@ async function start(port = PORT) {
   // ولا /api/admin إطلاقًا بعد الآن.
   app.use(wslhaCreateApp());
 
+  // شبكة أمان أخيرة: أي خطأ يوصل هنا عبر next(err) (من asyncHandler بمسارات auth/admin/rooms)
+  // يرجع JSON مهذّب بدل صفحة HTML افتراضية من Express — وبدونها أصلًا الاستثناء غير المُمسوك
+  // كان يُسقط عملية Node بالكامل لكل المستخدمين دفعة وحدة.
+  app.use((err, req, res, next) => {
+    console.error('خطأ غير متوقع بمسار API:', err);
+    if (res.headersSent) return next(err);
+    res.status(500).json({ error: 'خطأ غير متوقع بالسيرفر' });
+  });
+
   const server = http.createServer(app);
 
   const wslhaIo = new Server(server, { cors: { origin: ALLOWED_ORIGIN } });
