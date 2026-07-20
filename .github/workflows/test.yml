@@ -1,5 +1,11 @@
 name: Server tests
 
+# ملاحظة: هذا الملف كان يفترض وجود مجلد "server/" وحيد بجذر المستودع — بقايا من قبل
+# فصل المشروع لثلاث خدمات مستقلة (platform-server يستضيف wslha-server وmafia). حُدِّث
+# ليطابق البنية الحالية: كل مشروع له وظيفة اختبار خاصة، وplatform-server يحتاج تثبيت
+# اعتماديات وصّلها ومافيا أولًا (نفس ترتيب buildCommand في render.yaml) لأن كوده
+# يستورد ملفاتهم مباشرة (server.js، واختبار rooms-route.test.js يستورد mafia/server/src/rooms.js).
+
 on:
   push:
     branches: ['**']
@@ -7,17 +13,51 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  platform-server:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: server
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: server/package-lock.json
+          cache-dependency-path: |
+            wslha-server/server/package-lock.json
+            mafia/server/package-lock.json
+            platform-server/package-lock.json
       - run: npm ci
+        working-directory: wslha-server/server
+      - run: npm ci
+        working-directory: mafia/server
+      - run: npm ci
+        working-directory: platform-server
       - run: npm test
+        working-directory: platform-server
+
+  wslha-server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: wslha-server/server/package-lock.json
+      - run: npm ci
+        working-directory: wslha-server/server
+      - run: npm test
+        working-directory: wslha-server/server
+
+  mafia-server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: mafia/server/package-lock.json
+      - run: npm ci
+        working-directory: mafia/server
+      - run: npm test
+        working-directory: mafia/server
