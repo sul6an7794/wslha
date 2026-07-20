@@ -396,9 +396,8 @@ const App = {
           '<div class="eyebrow">منصة الألعاب الاجتماعية</div>' +
           '<h1>جمعتكم<br>ناقصها لعبه</h1>' +
           '<p>افتح غرفة وشارك الرابط، وربعك يدخلون من جوالاتهم.</p>' +
-          '<button class="hero-cta" onclick="document.getElementById(\'gamesSection\').scrollIntoView({behavior:\'smooth\'})">ابدأ الآن</button>' +
         '</section>' +
-        '<section class="section" id="gamesSection">' +
+        '<section class="section">' +
           '<div class="section-head"><h2>وش تلعبون الليلة؟</h2><span>اختر لعبة، افتح غرفة، واجمع ربعك</span></div>' +
           '<button class="game-card mafia" onclick="App.openGame(\'mafia\')">' +
             '<span class="glow"></span>' +
