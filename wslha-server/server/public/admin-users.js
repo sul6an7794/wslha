@@ -98,27 +98,12 @@
   function open() { ov.classList.add('on'); load(); }
   function close() { ov.classList.remove('on'); }
 
-  // نخلي بطاقة الإحصاء «مستخدمون» نفسها قابلة للضغط لفتح القائمة (يُعاد ربطها بعد إعادة الرسم).
+  // زر «إدارة المستخدمين» أعلى لوحة التحكم يفتح القائمة (يُعاد ربطه بعد إعادة الرسم).
   function ensureTrigger() {
-    var admin = document.querySelector('[data-screen-label="Admin"]');
-    if (!admin) return;
-    var divs = admin.querySelectorAll('div');
-    for (var i = 0; i < divs.length; i++) {
-      var el = divs[i];
-      if (el.children.length === 0 && el.textContent.trim() === 'مستخدمون') {
-        var card = el.parentElement;
-        if (card && !card.getAttribute('data-wau')) {
-          card.setAttribute('data-wau', '1');
-          card.style.cursor = 'pointer';
-          card.title = 'اضغط لعرض المستخدمين وإدارتهم';
-          card.addEventListener('click', open);
-          var hint = document.createElement('div');
-          hint.className = 'wau-hint';
-          hint.textContent = '↗ اضغط للإدارة';
-          card.appendChild(hint);
-        }
-        break;
-      }
+    var btn = document.getElementById('wau-open-btn');
+    if (btn && !btn.getAttribute('data-wau')) {
+      btn.setAttribute('data-wau', '1');
+      btn.addEventListener('click', open);
     }
   }
 
