@@ -62,7 +62,10 @@ router.post('/otp/verify', otpVerifyLimit, async (req, res) => {
   // غير متزامن يُسقط عملية Node بالكامل (كل المستخدمين، مو بس هذا الطلب).
   try {
     let user = db.getUserByPhone(phone);
-    if (!user) {
+    // الواجهة تحتاج تعرف "حساب جديد فعلاً؟" عشان تعرض خطوة اختيار الاسم مرة وحدة بس —
+    // بدل ما تطلبه مقدّمًا من كل شخص حتى لو عنده حساب أصلًا (يلخبط اللي يسجّل دخول عادي).
+    const isNew = !user;
+    if (isNew) {
       let name = String(username || '').trim();
       if (!name || !NAME_RE.test(name)) name = randomDisplayName();
       // لا يمنح أي تسجيل عام صلاحية مشرف. التهيئة الأولى تتطلب اسمًا ورمزًا سريًا من بيئة الخادم.
@@ -73,7 +76,7 @@ router.post('/otp/verify', otpVerifyLimit, async (req, res) => {
     const token = signToken(user);
     setAuthCookie(req, res, token);
     // نرجّع التوكن بالجسم كمان للنسخة المستقلة من الواجهة (أصل مختلف ما توصله الكوكي).
-    res.json({ token, user: publicUser(user) });
+    res.json({ token, user: publicUser(user), isNew });
   } catch (e) {
     console.error('otp/verify: خطأ غير متوقع بعد التحقق من الرمز:', e);
     res.status(500).json({ error: 'تعذّر إتمام تسجيل الدخول حاليًا، حاول مرة ثانية' });

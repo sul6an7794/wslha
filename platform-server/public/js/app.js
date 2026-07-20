@@ -56,8 +56,8 @@ const App = {
     user: null,
     otpStage: 'phone',
     otpCountryCode: '+966',
+    otpLocalDraft: '',
     otpPhone: '',
-    otpName: '',
     otpSending: false,
     authError: '',
     pendingCreate: false,
@@ -159,17 +159,28 @@ const App = {
 
   backToPhoneStep() { this.state.otpStage = 'phone'; this.state.authError = ''; this.render(); },
 
-  onCountryCodeChange(select) { this.state.otpCountryCode = select.value; },
+  onCountryCodeChange(select) {
+    this.state.otpCountryCode = select.value;
+    // إعادة رسم لازمة عشان نظهر/نخفي حقل رمز الدولة اليدوي — نحافظ على الرقم المكتوب
+    // عبر otpLocalDraft (يتحدّث بـoninput) بدل ما يُمسح بإعادة الرسم.
+    this.render();
+  },
 
   async requestOtp() {
-    const code = this.state.otpCountryCode || '+966';
+    let code;
+    if (this.state.otpCountryCode === 'custom') {
+      const customDigits = (document.getElementById('authCustomCode').value || '').replace(/\D/g, '');
+      if (!customDigits) return this.setAuthError('أدخل رمز الدولة (بدون +)');
+      code = '+' + customDigits;
+    } else {
+      code = this.state.otpCountryCode || '+966';
+    }
     // نقبل الرقم المحلي بأي شكل (بمسافات أو بصفر بالبداية) ونطبّعه بأنفسنا بدل ما نحمّل
     // المستخدم هم الصيغة الدولية — نحذف كل شي غير رقمي، وأي أصفار بالبداية (٠٥ محليًا = ٥ دوليًا).
     const localDigits = document.getElementById('authPhone').value.replace(/\D/g, '').replace(/^0+/, '');
     const phone = code + localDigits;
     if (!PHONE_RE.test(phone)) return this.setAuthError('أدخل رقم جوال صحيح (بدون صفر بالبداية)');
     this.state.otpPhone = phone;
-    this.state.otpName = (document.getElementById('authName').value || '').trim();
     this.state.otpSending = true;
     this.setAuthError('');
     this.render();
@@ -189,25 +200,53 @@ const App = {
     const otp = document.getElementById('authOtp').value.trim();
     if (!otp) return this.setAuthError('أدخل رمز التحقق');
     try {
-      const { user } = await this.api('/api/auth/otp/verify', {
+      const { user, isNew } = await this.api('/api/auth/otp/verify', {
         method: 'POST',
-        body: JSON.stringify({ phone: this.state.otpPhone, otp, username: this.state.otpName || undefined }),
+        body: JSON.stringify({ phone: this.state.otpPhone, otp }),
       });
       this.state.user = user;
-      this.state.otpStage = 'phone';
-      this.state.otpPhone = '';
-      this.state.otpName = '';
-      this.showToast('حيّاك يا ' + user.username);
-      const pendingCreate = this.state.pendingCreate;
-      const pendingJoinCode = this.state.pendingJoinCode;
-      this.state.pendingCreate = false;
-      this.state.pendingJoinCode = '';
-      if (pendingJoinCode) return this.continueJoin(pendingJoinCode);
-      if (pendingCreate === 'mafia') return this.createRoom();
-      this.go(pendingCreate ? 'create' : 'home');
+      // حساب جديد فعلاً؟ نعرض خطوة اختيار اسم مرة وحدة بس — لو حساب قديم يكمل دخوله على طول
+      // بدون ما يشوف أي حقل اسم (ما له داعي، وممكن يلخبطه إذا كتب شي مختلف عن اسمه المسجّل).
+      if (isNew) {
+        this.state.otpStage = 'name';
+        this.render();
+        return;
+      }
+      this.finishLogin();
     } catch (e) {
       this.setAuthError(e.message);
     }
+  },
+
+  async confirmDisplayName() {
+    const name = (document.getElementById('authDisplayName').value || '').trim();
+    if (name) {
+      try {
+        const { user } = await this.api('/api/auth/profile', { method: 'PATCH', body: JSON.stringify({ username: name }) });
+        this.state.user = user;
+      } catch (e) {
+        return this.setAuthError(e.message);
+      }
+    }
+    this.finishLogin();
+  },
+
+  skipDisplayName() { this.finishLogin(); },
+
+  finishLogin() {
+    const user = this.state.user;
+    this.state.otpStage = 'phone';
+    this.state.otpPhone = '';
+    this.state.otpLocalDraft = '';
+    this.state.authError = '';
+    this.showToast('حيّاك يا ' + user.username);
+    const pendingCreate = this.state.pendingCreate;
+    const pendingJoinCode = this.state.pendingJoinCode;
+    this.state.pendingCreate = false;
+    this.state.pendingJoinCode = '';
+    if (pendingJoinCode) return this.continueJoin(pendingJoinCode);
+    if (pendingCreate === 'mafia') return this.createRoom();
+    this.go(pendingCreate ? 'create' : 'home');
   },
 
   setAuthError(msg) {
@@ -407,18 +446,20 @@ const App = {
 
   screenAuth() {
     const s = this.state;
-    const isCodeStage = s.otpStage === 'code';
     const errorSlot = '<div id="authErrorSlot">' + (s.authError ? '<div class="error-banner">' + this.escape(s.authError) + '</div>' : '') + '</div>';
     const countryOptions = COUNTRY_CODES.map((c) =>
       '<option value="' + c.code + '"' + (c.code === s.otpCountryCode ? ' selected' : '') + '>' + c.label + '</option>'
-    ).join('');
+    ).join('') + '<option value="custom"' + (s.otpCountryCode === 'custom' ? ' selected' : '') + '>🌍 دولة أخرى</option>';
+    const customCodeField = s.otpCountryCode === 'custom'
+      ? '<input id="authCustomCode" type="tel" inputmode="numeric" maxlength="4" class="field" placeholder="رمز الدولة بدون + (مثال: 962)">'
+      : '';
     const phoneStep = '' +
       '<div class="form-col">' +
         '<div class="phone-row">' +
           '<select id="authCountryCode" class="field phone-code" onchange="App.onCountryCodeChange(this)">' + countryOptions + '</select>' +
-          '<input id="authPhone" type="tel" inputmode="numeric" class="field phone-local" placeholder="5xxxxxxxx">' +
+          '<input id="authPhone" type="tel" inputmode="numeric" class="field phone-local" placeholder="5xxxxxxxx" value="' + this.escape(s.otpLocalDraft) + '" oninput="App.state.otpLocalDraft=this.value">' +
         '</div>' +
-        '<input id="authName" class="field" maxlength="20" placeholder="اسمك (يظهر لربعك، أول مرة بس)">' +
+        customCodeField +
         '<div class="hint-banner">' + ICONS.ticket + ' أول تذكرة علينا — تجي مع حسابك الجديد</div>' +
         errorSlot +
         '<button class="btn-primary" ' + (s.otpSending ? 'disabled' : '') + ' onclick="App.requestOtp()">' + (s.otpSending ? 'جارِ الإرسال...' : 'إرسال رمز التحقق') + '</button>' +
@@ -430,14 +471,28 @@ const App = {
         '<button class="btn-primary" onclick="App.verifyOtpCode()">تأكيد الدخول</button>' +
         '<button class="btn-link" onclick="App.backToPhoneStep()">تغيير الرقم</button>' +
       '</div>';
+    const nameStep = '' +
+      '<div class="form-col">' +
+        '<input id="authDisplayName" class="field" maxlength="20" placeholder="اسمك (يظهر لربعك بالألعاب)">' +
+        errorSlot +
+        '<button class="btn-primary" onclick="App.confirmDisplayName()">حفظ ومتابعة</button>' +
+        '<button class="btn-link" onclick="App.skipDisplayName()">تخطي الآن</button>' +
+      '</div>';
+    const titles = {
+      code: { h: 'حيّاك في دورك', p: 'دقيقة وحدة وتكون داخل اللعب' },
+      name: { h: 'وش اسمك؟', p: 'يظهر لربعك بالألعاب — تقدر تغيّره بعدين من ملفك الشخصي' },
+      phone: { h: 'حيّاك في دورك', p: 'دقيقة وحدة وتكون داخل اللعب' },
+    };
+    const title = titles[s.otpStage] || titles.phone;
+    const stepHtml = s.otpStage === 'code' ? codeStep : s.otpStage === 'name' ? nameStep : phoneStep;
     return '' +
       '<main data-screen="auth">' +
         '<button class="back-btn" onclick="App.go(\'home\')">' + ICONS.back + ' رجوع</button>' +
         '<div style="margin:26px 0 22px;text-align:center;">' +
-          '<h1 style="font-size:32px;margin:0 0 8px;">حيّاك في دورك</h1>' +
-          '<p style="font-size:14px;color:var(--subtext);margin:0;">دقيقة وحدة وتكون داخل اللعب</p>' +
+          '<h1 style="font-size:32px;margin:0 0 8px;">' + title.h + '</h1>' +
+          '<p style="font-size:14px;color:var(--subtext);margin:0;">' + title.p + '</p>' +
         '</div>' +
-        (isCodeStage ? codeStep : phoneStep) +
+        stepHtml +
         '<div class="footer-tag">دورك — تلعبها صح</div>' +
       '</main>';
   },
