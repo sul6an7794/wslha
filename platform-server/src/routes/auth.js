@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
@@ -17,15 +18,48 @@ const NAME_RE = /^[\p{L}\p{N} _.-]{2,40}$/u;
 const PHONE_RE = /^\+[1-9]\d{7,14}$/;
 
 // إرسال الرمز يكلّف رسالة SMS فعلية — حد أضيق من التحقق لمنع استنزاف الرصيد بالإساءة.
+// هذي الحدود بعنوان IP (انظر rateLimit.js) — بمفردها ما تكفي ضد مهاجم موزّع على عدة
+// عناوين يستهدف رقم جوال واحد بالذات، فأضفنا حد إضافي بالرقم نفسه بالأسفل (phoneRateLimiter).
 const otpRequestLimit = rateLimit(5, 5 * 60 * 1000, 'otp-request');
 const otpVerifyLimit = rateLimit(20, 5 * 60 * 1000, 'otp-verify');
 const profileLimit = rateLimit(30, 5 * 60 * 1000, 'profile');
 const BOOTSTRAP_ADMIN_USERNAME = String(process.env.ADMIN_BOOTSTRAP_USERNAME || '').trim();
 const BOOTSTRAP_ADMIN_TOKEN = String(process.env.ADMIN_BOOTSTRAP_TOKEN || '');
 
+// حد إضافي بالرقم نفسه (بعكس rateLimit.js اللي بعنوان IP) — يمنع مهاجم عنده عدة عناوين IP
+// (بروكسيات) من استهداف رقم جوال شخص معيّن بمحاولات لا نهائية موزّعة على عناوين مختلفة.
+function phoneRateLimiter(max, windowMs) {
+  const buckets = new Map();
+  const timer = setInterval(() => {
+    const now = Date.now();
+    for (const [key, rec] of buckets) if (now > rec.resetAt) buckets.delete(key);
+  }, 10 * 60 * 1000);
+  if (timer.unref) timer.unref();
+  return function allow(key) {
+    const now = Date.now();
+    let rec = buckets.get(key);
+    if (!rec || now > rec.resetAt) {
+      rec = { count: 0, resetAt: now + windowMs };
+      buckets.set(key, rec);
+    }
+    rec.count += 1;
+    return rec.count <= max;
+  };
+}
+const otpRequestPhoneLimit = phoneRateLimiter(5, 5 * 60 * 1000);
+const otpVerifyPhoneLimit = phoneRateLimiter(8, 5 * 60 * 1000);
+
+// مقارنة ثابتة الزمن (بدل ===) لمقاومة هجمات التوقيت على رمز تهيئة أول مشرف.
+function safeEqual(a, b) {
+  const bufA = Buffer.from(String(a));
+  const bufB = Buffer.from(String(b));
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
 function isBootstrapAdmin(name, token) {
   if (!BOOTSTRAP_ADMIN_USERNAME || !BOOTSTRAP_ADMIN_TOKEN) return false;
-  return name === BOOTSTRAP_ADMIN_USERNAME && String(token || '') === BOOTSTRAP_ADMIN_TOKEN;
+  return name === BOOTSTRAP_ADMIN_USERNAME && safeEqual(String(token || ''), BOOTSTRAP_ADMIN_TOKEN);
 }
 
 function randomDisplayName() {
@@ -36,6 +70,9 @@ router.post('/otp/request', otpRequestLimit, async (req, res) => {
   const phone = String((req.body || {}).phone || '').trim();
   if (!PHONE_RE.test(phone)) {
     return res.status(400).json({ error: 'رقم الجوال غير صحيح (استخدم الصيغة الدولية، مثال: +9665XXXXXXXX)' });
+  }
+  if (!otpRequestPhoneLimit(phone)) {
+    return res.status(429).json({ error: 'محاولات كثيرة على هذا الرقم، حاول بعد قليل' });
   }
   try {
     await authentica.sendOtp(phone);
@@ -51,6 +88,9 @@ router.post('/otp/verify', otpVerifyLimit, async (req, res) => {
   const phone = String(rawPhone || '').trim();
   if (!PHONE_RE.test(phone) || !String(otp || '').trim()) {
     return res.status(400).json({ error: 'الرقم أو الرمز مفقود' });
+  }
+  if (!otpVerifyPhoneLimit(phone)) {
+    return res.status(429).json({ error: 'محاولات كثيرة على هذا الرقم، حاول بعد قليل' });
   }
   try {
     await authentica.verifyOtp(phone, String(otp).trim());

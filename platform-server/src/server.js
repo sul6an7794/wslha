@@ -69,7 +69,9 @@ async function start(port = PORT) {
   }
 
   const app = express();
-  app.set('trust proxy', true);
+  // أمان: نثق بهوب وحدة بس (بروكسي Render نفسه)، لا بسلسلة هوبات غير محدودة —
+  // يمنع عميل خبيث من حقن عناوين IP مزيّفة بترويسة X-Forwarded-For والتحكم بـreq.ip.
+  app.set('trust proxy', 1);
   app.disable('x-powered-by');
   app.use((req, res, next) => {
     res.set('X-Content-Type-Options', 'nosniff');

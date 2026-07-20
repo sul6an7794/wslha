@@ -19,7 +19,8 @@ const PORT = process.env.PORT || 3001;
 function createApp() {
   const app = express();
   // خلف بروكسي (Render/Railway) — يخلي req.protocol = https حتى تطلع روابط الصور بـ https وما تنكسر بصفحة https.
-  app.set('trust proxy', true);
+  // هوب وحدة بس (مو true/غير محدود) — يمنع تزوير X-Forwarded-For من التحكم بـreq.ip المستخدم بتحديد المعدّل.
+  app.set('trust proxy', 1);
   app.disable('x-powered-by');
 
   // ترويسات أمان أساسية

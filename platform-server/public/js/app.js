@@ -373,7 +373,8 @@ const App = {
       : '';
     const right = s.user
       ? '<button class="profile-pill" onclick="App.go(\'profile\',{})">' + this.escape(s.user.username) + '</button>'
-      : '<button class="login-pill" onclick="App.go(\'auth\')">تسجيل الدخول</button>';
+      // ما نكرر زر "تسجيل الدخول" وأنت أصلًا واقف بشاشة الدخول (فيها زر "رجوع" أصلًا).
+      : (s.screen === 'auth' ? '' : '<button class="login-pill" onclick="App.go(\'auth\')">تسجيل الدخول</button>');
     document.getElementById('headerRoot').innerHTML =
       '<div class="header-side start">' + ticket + '</div>' +
       '<button class="logo-btn" onclick="App.go(\'home\')" aria-label="الرئيسية — دورك">' +
@@ -395,8 +396,9 @@ const App = {
           '<div class="eyebrow">منصة الألعاب الاجتماعية</div>' +
           '<h1>جمعتكم<br>ناقصها لعبه</h1>' +
           '<p>افتح غرفة وشارك الرابط، وربعك يدخلون من جوالاتهم.</p>' +
+          '<button class="hero-cta" onclick="document.getElementById(\'gamesSection\').scrollIntoView({behavior:\'smooth\'})">ابدأ الآن</button>' +
         '</section>' +
-        '<section class="section">' +
+        '<section class="section" id="gamesSection">' +
           '<div class="section-head"><h2>وش تلعبون الليلة؟</h2><span>اختر لعبة، افتح غرفة، واجمع ربعك</span></div>' +
           '<button class="game-card mafia" onclick="App.openGame(\'mafia\')">' +
             '<span class="glow"></span>' +
@@ -602,7 +604,6 @@ const App = {
           '<div class="field-label">تغيير الاسم</div>' +
           '<div style="display:flex;gap:8px;"><input id="profileNameInput" class="field" maxlength="20" placeholder="الاسم الجديد" style="flex:1;min-width:0;"><button class="btn-primary" style="width:auto;margin-top:0;padding:12px 20px;" onclick="App.saveName()">حفظ</button></div>' +
          '</div>' +
-         '<button class="row-btn" onclick="App.go(\'tickets\')"><span style="display:flex;align-items:center;gap:10px;color:#E0B86A;">' + ICONS.ticket + ' <span style="color:var(--text);">تذاكري ورصيدي</span></span><span style="color:var(--dim);">' + ICONS.chevron + '</span></button>' +
          '<button class="danger-btn" onclick="App.logout()">تسجيل الخروج</button>' +
          (s.deleteConfirm
            ? '<div class="delete-confirm"><div class="field-label">حذف الحساب نهائيًا</div><p>سيُحذف حسابك وسجلّه، بدون إمكانية تراجع.</p><div><button class="danger-btn" onclick="App.deleteAccount()">تأكيد الحذف</button><button class="btn-link" onclick="App.cancelDeleteAccount()">إلغاء</button></div></div>'

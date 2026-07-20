@@ -64,6 +64,7 @@ main{animation:dwrkUp .35s ease both;padding:16px 20px;flex:1;display:flex;flex-
 .hero .eyebrow{font-size:12.5px;font-weight:700;color:var(--faint);letter-spacing:.06em;margin-bottom:12px;}
 .hero h1{font-size:40px;line-height:1.45;margin:0 0 14px;}
 .hero p{font-size:15.5px;color:var(--subtext);line-height:1.9;margin:0 auto;max-width:330px;}
+.hero-cta{display:inline-block;margin-top:20px;padding:14px 30px;border-radius:100px;font-weight:900;font-size:15.5px;color:var(--btn-text);background:var(--btn-bg);border:none;}
 .section{padding:22px 0 6px;}
 .section-head{display:flex;flex-direction:column;align-items:flex-start;gap:4px;margin-bottom:16px;}
 .section-head h2{font-size:26px;}

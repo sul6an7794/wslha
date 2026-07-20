@@ -1,9 +1,12 @@
 // تحديد معدّل بسيط بالذاكرة (لكل عنوان IP) — مشترك بين كل نقاط الـAPI.
 const buckets = new Map(); // key(ip+scope) -> { count, resetAt }
 
+// أمان: ما نثق بترويسة CF-Connecting-IP — أي زائر يقدر يرسلها بقيمة عشوائية مباشرة لو
+// قدر يوصل للسيرفر بدون المرور عبر Cloudflare فعليًا، فيصنع "دلو" جديد بكل طلب ويتجاوز
+// الحد بالكامل. req.ip وحده يعتمد على trust proxy المضبوط بـserver.js (هوب وحدة موثوقة
+// من Render)، وهو الأصعب على التزوير من ترويسة خام.
 function clientIp(req) {
-  // نعتمد عنوان Cloudflare الحقيقي (لا يُزوَّر) بدل X-Forwarded-For القابل للتزوير.
-  return req.headers['cf-connecting-ip'] || req.ip || req.socket.remoteAddress || 'unknown';
+  return req.ip || req.socket.remoteAddress || 'unknown';
 }
 
 function rateLimit(max, windowMs, scope) {
