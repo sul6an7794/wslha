@@ -12,10 +12,15 @@ function headers() {
   return { Accept: 'application/json', 'Content-Type': 'application/json', 'X-Authorization': apiKey() };
 }
 
+// أخطاء Authentica تُرجع {"errors":[{"message":"..."}]} — مو حقل "message" مباشر بجذر الجسم.
+function providerMessage(data) {
+  return data && Array.isArray(data.errors) && data.errors[0] && data.errors[0].message;
+}
+
 function otpErrorMessage(status, data) {
   if (status === 401) return 'خطأ في إعدادات خدمة الرسائل — تواصل مع الدعم';
   if (status === 429) return 'محاولات كثيرة جدًا، حاول بعد قليل';
-  if (status === 400) return (data && data.message) || 'رقم الجوال أو الرمز غير صحيح';
+  if (status === 400) return providerMessage(data) || 'رقم الجوال أو الرمز غير صحيح';
   return 'تعذّر إرسال/التحقق من الرمز حاليًا، حاول لاحقًا';
 }
 
@@ -40,7 +45,9 @@ async function verifyOtp(phone, otp, fetchImpl = fetch) {
     body: JSON.stringify({ phone, otp }),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.verified) {
+  // توثيق Authentica: رد التحقق الناجح شكله {"status": true, "message": "..."} — لا يوجد
+  // حقل "verified" إطلاقًا بالـAPI الحقيقي رغم الاسم المتوقّع.
+  if (!res.ok || !data.status) {
     throw Object.assign(new Error(otpErrorMessage(res.status, data)), { status: res.status });
   }
   return data;

@@ -29,20 +29,20 @@ test('sendOtp: فشل من المزود يرمي خطأ برسالة عربية'
   await assert.rejects(() => sendOtp('+966500000000', fakeFetch), /محاولات/);
 });
 
-test('verifyOtp: نجاح يرسل الجسم الصحيح ويرجّع verified', async () => {
+test('verifyOtp: نجاح يرسل الجسم الصحيح ويرجّع status (شكل رد Authentica الحقيقي، لا يوجد حقل verified)', async () => {
   let captured;
   const fakeFetch = async (url, opts) => {
     captured = { url, opts };
-    return { ok: true, json: async () => ({ verified: true }) };
+    return { ok: true, json: async () => ({ status: true, message: 'OTP verified successfully' }) };
   };
   const data = await verifyOtp('+966500000000', '123456', fakeFetch);
-  assert.equal(data.verified, true);
+  assert.equal(data.status, true);
   assert.match(captured.url, /\/api\/v2\/verify-otp$/);
   assert.deepEqual(JSON.parse(captured.opts.body), { phone: '+966500000000', otp: '123456' });
 });
 
-test('verifyOtp: verified:false يُعامل كفشل حتى لو status 200', async () => {
-  const fakeFetch = async () => ({ ok: true, status: 200, json: async () => ({ verified: false }) });
+test('verifyOtp: status:false يُعامل كفشل حتى لو status HTTP 200', async () => {
+  const fakeFetch = async () => ({ ok: true, status: 200, json: async () => ({ status: false }) });
   await assert.rejects(() => verifyOtp('+966500000000', '000000', fakeFetch));
 });
 

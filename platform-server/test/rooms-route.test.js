@@ -16,7 +16,7 @@ const { start } = require('../src/server');
 // وهمية بدل ما نتصل فعليًا بـ Authentica (خدمة SMS حقيقية) أثناء الاختبارات الآلية.
 const authentica = require('../src/authentica');
 authentica.sendOtp = async () => ({ success: true });
-authentica.verifyOtp = async () => ({ verified: true });
+authentica.verifyOtp = async () => ({ status: true });
 
 let server;
 let baseUrl;
