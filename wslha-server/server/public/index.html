@@ -936,7 +936,8 @@ class Component extends DCLogic {
   leaveLobby() {
     if (this.serverConnected) this._socket.emit('leaveTeam', {}, () => {});
     this._clearResume();
-    this.setState({ myTeamIndex: null, role: null }, () => this.go('home'));
+    // خروج فعلي لمنصة دورك بدل صفحة وصّلها الداخلية — نفس منطق goHome بالأعلى.
+    this.setState({ myTeamIndex: null, role: null }, () => { window.location.href = '/'; });
   }
   // القائد يطرد عضوًا من الفريق (قبل بدء اللعبة فقط).
   kickPlayer(playerId) {
@@ -1329,7 +1330,9 @@ class Component extends DCLogic {
     }));
 
     return {
-      goHome: () => this.go('home'), goCreate: () => this.go('create'), goHow: () => this.go('how'), goAbout: () => this.go('about'),
+      // "الرئيسية" هنا تعني الرجوع الفعلي لمنصة دورك (مثل زر مغادرة الغرفة بمافيا بالضبط) —
+      // مو صفحة وصّلها الداخلية القديمة، اللي صارت زائدة بعد ما صار لدورك صفحة رئيسية حقيقية.
+      goHome: () => { window.location.href = '/'; }, goCreate: () => this.go('create'), goHow: () => this.go('how'), goAbout: () => this.go('about'),
       leaveLobby: () => this.leaveLobby(),
       goLogin: () => { window.location.href = '/'; }, goJoin: () => this.go('join'), goGame: () => this.go('game'),
       isHome: page === 'home', isCreate: page === 'create', isHow: page === 'how', isAbout: page === 'about',
