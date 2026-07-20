@@ -411,7 +411,7 @@ const App = {
             '<span class="glow"></span>' +
             '<span class="body">' +
               '<span class="kicker">وصف · نقاش · وقت محدود</span>' +
-              '<span class="title">وصّلـها</span>' +
+              '<span class="title">وصّلها</span>' +
               '<span class="desc">' + GAMES.wslha.cardDesc + '</span>' +
               '<span class="meta">' + this.metaLine(GAMES.wslha.cardMeta) + '</span>' +
             '</span>' +
@@ -501,9 +501,9 @@ const App = {
     const s = this.state, g = GAMES[s.game];
     const ticketsLine = s.user ? '<span class="r">رصيدك: ' + AR(s.user.credits || 0) + '</span>' : '';
     const isCreatingMafia = g.cls === 'mafia' && s.creating;
-    const gameTitle = g.cls === 'wslha' ? 'وصّلـها' : g.name;
+    const gameTitle = g.cls === 'wslha' ? 'وصّلها' : g.name;
     const createLabel = g.cls === 'wslha'
-      ? '<span class="cta-create-label">إنشاء غرفة <span class="cta-game-mark wslha">وصّلـها</span></span>'
+      ? '<span class="cta-create-label">إنشاء غرفة <span class="cta-game-mark wslha">وصّلها</span></span>'
       : '<span class="cta-create-label">إنشاء غرفة <span class="cta-game-mark mafia">مافيا</span></span>';
     const quickExample = g.cls === 'wslha'
       ? '<div class="game-example"><strong>مثال سريع</strong><span>واحد يشوف ثلج، والثاني معطف، والثالث مدفأة — وش الرابط؟ الشتاء.</span></div>'
@@ -536,7 +536,7 @@ const App = {
     const credits = s.user ? (s.user.credits || 0) : 0;
     const noTickets = credits <= 0;
     const gameWordmark = g.cls === 'wslha'
-      ? '<div class="create-game-mark wslha">وصّلـها</div>'
+      ? '<div class="create-game-mark wslha">وصّلها</div>'
       : '<div class="create-game-mark mafia">مافيا</div>';
     const countIndex = g.counts ? g.counts.indexOf(s.teamCount) : -1;
     const atFirstCount = countIndex === 0;
@@ -581,7 +581,7 @@ const App = {
         '<h1 style="font-size:30px;margin:10px 0 20px;">تذاكرك</h1>' +
         '<div class="tickets-card"><div style="color:#E0B86A;margin-bottom:6px;display:flex;justify-content:center;">' + ICONS.ticketLg + '</div><div class="n">' + AR(credits) + '</div><div class="l">رصيدك الحالي — كل غرفة تخصم تذكرة واحدة، لأي لعبة</div></div>' +
         '<button class="btn-primary" style="background:#E0B86A;color:#06060D;margin-bottom:8px;" onclick="App.buyTickets()">شراء تذاكر</button>' +
-        '<div style="font-size:11.5px;color:var(--faint);text-align:center;margin-bottom:10px;">الدفع تجريبي حاليًا لأغراض العرض</div>' +
+        '<div style="font-size:11.5px;color:var(--faint);text-align:center;margin-bottom:10px;">بوابة الدفع قريبًا — غير متاحة حاليًا</div>' +
         '<div style="font-size:13px;color:var(--faint);line-height:1.9;text-align:center;max-width:300px;margin:0 auto;">التذكرة تُخصم من منشئ الغرفة فقط. أصدقاؤك ينضمون بالرقم أو الرابط مجانًا.</div>' +
         '<div class="footer-tag">دورك — تلعبها صح</div>' +
       '</main>';
