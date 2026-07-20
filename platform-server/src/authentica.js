@@ -1,6 +1,9 @@
 // عميل Authentica لإرسال/التحقق من رمز OTP عبر الجوال — يحل محل كلمة المرور بالكامل.
 // راجع: https://api.authentica.sa (POST /api/v2/send-otp، POST /api/v2/verify-otp)
 const BASE_URL = process.env.AUTHENTICA_BASE_URL || 'https://api.authentica.sa';
+// رقم قالب الرسالة من لوحة Authentica (Templates) — القالب رقم 9 الجاهز عندهم:
+// "استخدم الرمز {{otp}} للتحقق من حسابك في {{app_name}}." غيّره من متغيّر البيئة لو تبي قالب آخر.
+const TEMPLATE_ID = Number(process.env.AUTHENTICA_TEMPLATE_ID || 9);
 
 function apiKey() {
   const key = process.env.AUTHENTICA_API_KEY;
@@ -29,7 +32,7 @@ async function sendOtp(phone, fetchImpl = fetch) {
   const res = await fetchImpl(BASE_URL + '/api/v2/send-otp', {
     method: 'POST',
     headers: headers(),
-    body: JSON.stringify({ method: 'sms', phone }),
+    body: JSON.stringify({ method: 'sms', phone, template_id: TEMPLATE_ID }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.success) {
