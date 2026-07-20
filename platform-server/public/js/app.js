@@ -1,5 +1,14 @@
 const AR = (v) => String(v).replace(/[0-9]/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d]);
 const PHONE_RE = /^\+[1-9]\d{7,14}$/;
+// السعودية أول اختيار افتراضي (الجمهور الأساسي)، وباقي دول الخليج بعدها.
+const COUNTRY_CODES = [
+  { code: '+966', label: '🇸🇦 ‎+966' },
+  { code: '+971', label: '🇦🇪 ‎+971' },
+  { code: '+965', label: '🇰🇼 ‎+965' },
+  { code: '+973', label: '🇧🇭 ‎+973' },
+  { code: '+974', label: '🇶🇦 ‎+974' },
+  { code: '+968', label: '🇴🇲 ‎+968' },
+];
 
 const ICONS = {
   ticket: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1a2 2 0 0 0 0 4v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1a2 2 0 0 0 0-4z"/><path d="M13 7v10"/></svg>',
@@ -46,6 +55,7 @@ const App = {
     screen: 'home',
     user: null,
     otpStage: 'phone',
+    otpCountryCode: '+966',
     otpPhone: '',
     otpName: '',
     otpSending: false,
@@ -149,9 +159,15 @@ const App = {
 
   backToPhoneStep() { this.state.otpStage = 'phone'; this.state.authError = ''; this.render(); },
 
+  onCountryCodeChange(select) { this.state.otpCountryCode = select.value; },
+
   async requestOtp() {
-    const phone = document.getElementById('authPhone').value.trim();
-    if (!PHONE_RE.test(phone)) return this.setAuthError('أدخل رقم جوال صحيح بالصيغة الدولية (مثال: +9665xxxxxxxx)');
+    const code = this.state.otpCountryCode || '+966';
+    // نقبل الرقم المحلي بأي شكل (بمسافات أو بصفر بالبداية) ونطبّعه بأنفسنا بدل ما نحمّل
+    // المستخدم هم الصيغة الدولية — نحذف كل شي غير رقمي، وأي أصفار بالبداية (٠٥ محليًا = ٥ دوليًا).
+    const localDigits = document.getElementById('authPhone').value.replace(/\D/g, '').replace(/^0+/, '');
+    const phone = code + localDigits;
+    if (!PHONE_RE.test(phone)) return this.setAuthError('أدخل رقم جوال صحيح (بدون صفر بالبداية)');
     this.state.otpPhone = phone;
     this.state.otpName = (document.getElementById('authName').value || '').trim();
     this.state.otpSending = true;
@@ -393,9 +409,15 @@ const App = {
     const s = this.state;
     const isCodeStage = s.otpStage === 'code';
     const errorSlot = '<div id="authErrorSlot">' + (s.authError ? '<div class="error-banner">' + this.escape(s.authError) + '</div>' : '') + '</div>';
+    const countryOptions = COUNTRY_CODES.map((c) =>
+      '<option value="' + c.code + '"' + (c.code === s.otpCountryCode ? ' selected' : '') + '>' + c.label + '</option>'
+    ).join('');
     const phoneStep = '' +
       '<div class="form-col">' +
-        '<input id="authPhone" type="tel" class="field" placeholder="رقم الجوال — مثال: +9665xxxxxxxx">' +
+        '<div class="phone-row">' +
+          '<select id="authCountryCode" class="field phone-code" onchange="App.onCountryCodeChange(this)">' + countryOptions + '</select>' +
+          '<input id="authPhone" type="tel" inputmode="numeric" class="field phone-local" placeholder="5xxxxxxxx">' +
+        '</div>' +
         '<input id="authName" class="field" maxlength="20" placeholder="اسمك (يظهر لربعك، أول مرة بس)">' +
         '<div class="hint-banner">' + ICONS.ticket + ' أول تذكرة علينا — تجي مع حسابك الجديد</div>' +
         errorSlot +

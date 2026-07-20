@@ -117,6 +117,9 @@ footer .socials a:hover{transform:translateY(-2px);border-color:var(--gold);colo
 .tabs button{flex:1;font-weight:700;font-size:14px;padding:10px;border-radius:11px;border:none;background:transparent;color:var(--subtext);}
 .tabs button.active{background:var(--btn-bg);color:var(--btn-text);}
 .form-col{display:flex;flex-direction:column;gap:12px;}
+.phone-row{display:flex;gap:8px;}
+.phone-row .phone-code{flex:0 0 108px;padding-inline:10px;}
+.phone-row .phone-local{flex:1;min-width:0;}
 .hint-banner{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--gold);font-weight:700;background:rgba(224,184,106,.08);border:1px dashed rgba(224,184,106,.35);border-radius:12px;padding:11px 14px;}
 .error-banner{font-size:13px;font-weight:700;color:var(--error-text);background:rgba(255,45,45,.08);border:1px solid rgba(255,45,45,.3);border-radius:12px;padding:10px 14px;}
 .btn-primary{width:100%;font-weight:900;font-size:16px;color:var(--btn-text);background:var(--btn-bg);border:none;border-radius:14px;padding:15px;margin-top:6px;}
