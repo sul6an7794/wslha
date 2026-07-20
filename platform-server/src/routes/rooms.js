@@ -1,8 +1,8 @@
 const express = require('express');
-const { authMiddleware } = require('../../../wslha-server/server/src/auth');
-const db = require('../../../wslha-server/server/src/db');
+const { authMiddleware } = require('../auth');
+const db = require('../db');
 const registry = require('../rooms-registry');
-const { rateLimit } = require('../../../wslha-server/server/src/rateLimit');
+const { rateLimit } = require('../rateLimit');
 
 const router = express.Router();
 

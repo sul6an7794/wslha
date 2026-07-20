@@ -1,4 +1,3 @@
-const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 
@@ -10,14 +9,6 @@ if (!JWT_SECRET) {
   console.warn(
     '⚠️  JWT_SECRET غير مضبوط — تم توليد مفتاح عشوائي مؤقت. اضبط JWT_SECRET في بيئة الإنتاج لتبقى الجلسات ثابتة.'
   );
-}
-
-function hashPassword(pw) {
-  return bcrypt.hashSync(pw, 10);
-}
-
-function verifyPassword(pw, hash) {
-  return bcrypt.compareSync(pw, hash);
 }
 
 function signToken(userRow) {
@@ -98,8 +89,6 @@ function adminMiddleware(req, res, next) {
 }
 
 module.exports = {
-  hashPassword,
-  verifyPassword,
   signToken,
   verifyToken,
   authMiddleware,

@@ -5,11 +5,12 @@ services:
     plan: free
     # منصة دورك الموحّدة (تجمع وصّلها + مافيا) — تحل محل السيرفر المستقل القديم.
     # لازم يبقى platform-server بجنب مجلدي wslha-server وmafia بنفس المستوى
-    # لأن كوده يطلبهم كمسارات نسبية (../../mafia/server، ../../wslha-server/server).
+    # لأن كوده يطلبهم كمسارات نسبية (../../mafia/server، ../../wslha-server/server)
+    # لاستضافة اللعبتين فقط — نظام الحسابات/الدخول نفسه ملك platform-server وحده الآن.
     rootDir: platform-server
-    # كود platform-server يطلب ملفات مافيا ووصّلها مباشرة (auth.js، rooms.js...)، وهالملفات
-    # تحتاج مكتباتها الخاصة (bcryptjs، jsonwebtoken...) — لازم نثبّتها بمجلديها هما كمان،
-    # مو بس جوا platform-server نفسه، وإلا يفشل التشغيل بخطأ "Cannot find module".
+    # مافيا ووصّلها يحتاجون مكتباتهم الخاصة بمجلديهم هما (multer/jimp/socket.io...)
+    # لتشغيل محتوى اللعبتين — مو بس جوا platform-server نفسه، وإلا يفشل التشغيل
+    # بخطأ "Cannot find module".
     buildCommand: npm install --prefix ../wslha-server/server && npm install --prefix ../mafia/server && npm install
     startCommand: npm start
     healthCheckPath: /health
@@ -20,3 +21,16 @@ services:
         value: https://wslha.app
       - key: NODE_VERSION
         value: "20"
+      - key: AUTHENTICA_API_KEY
+        sync: false
+      # أول حساب أدمن: سجّل دخول برقم جوالك عبر /api/auth/otp/verify مع username=owner
+      # وbootstrapToken=قيمة ADMIN_BOOTSTRAP_TOKEN (شوفها بلوحة Render بعد النشر) —
+      # مرة وحدة بس، أول تسجيل فيه. بعدها تدير بقية المشرفين من لوحة التحكم.
+      - key: ADMIN_BOOTSTRAP_USERNAME
+        value: owner
+      - key: ADMIN_BOOTSTRAP_TOKEN
+        generateValue: true
+      # بدونه: التخزين على ملف محلي بقرص Render المؤقت — يُمسح بكل إعادة نشر.
+      # لازم Atlas cluster حقيقي قبل وصول مستخدمين فعليين.
+      - key: MONGODB_URI
+        sync: false

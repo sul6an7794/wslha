@@ -2,24 +2,20 @@
 // كل لعبة (مافيا/وصّلها) تتحقق من وجود global.__DOURK_PLATFORM__ وتستدعي الجزء اللي
 // تحتاجه فقط (rooms/tickets/credits) — بدون أي اعتمادية مباشرة على وحدات platform-server.
 // أي ميزة مشتركة جديدة مستقبلًا (سجل نشاط، إنجازات...) تنضاف كخاصية جديدة هنا بدل global مستقل.
-const path = require('path');
 const registry = require('./rooms-registry');
 const ticketLedger = require('./ticket-ledger');
 const creditsBridge = require('./credits-bridge');
-
-const WSLHA_AUTH_PATH = path.join(__dirname, '..', '..', 'wslha-server', 'server', 'src', 'auth.js');
+const auth = require('./auth');
 
 function install(db) {
-  const wslhaAuth = require(WSLHA_AUTH_PATH);
-
   // تحقّق هوية حقيقي من كوكي الجلسة (نفس آلية تسجيل الدخول الحقيقية) — مو deviceId اللي
   // يقدر أي متصفح يخترعه بنفسه. اللعبة تستدعي هذا فقط عند لمس شي فيه قيمة حقيقية (تذاكر)،
   // بدون ما تحتاج تعرف اسم الكوكي أو تفاصيل db — كل شي محصور هنا بمكان واحد.
   function verifyFromCookieHeader(cookieHeader) {
-    const cookies = wslhaAuth.parseCookies(cookieHeader);
-    const token = cookies[wslhaAuth.COOKIE_NAME];
+    const cookies = auth.parseCookies(cookieHeader);
+    const token = cookies[auth.COOKIE_NAME];
     if (!token) return null;
-    const payload = wslhaAuth.verifyToken(token);
+    const payload = auth.verifyToken(token);
     if (!payload) return null;
     const user = db.getUserById(payload.id);
     return user ? { id: user.id, username: user.username, isAdmin: !!user.is_admin } : null;

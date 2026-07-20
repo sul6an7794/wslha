@@ -7,7 +7,6 @@ const { Server } = require('socket.io');
 
 const db = require('./db');
 const { seedDefaults } = require('./seed');
-const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const { registerSocket } = require('./socket');
 const { rateLimit } = require('./rateLimit');
@@ -66,8 +65,8 @@ function createApp() {
   app.get('/health', (req, res) => res.json({ ok: true }));
   // حد عام واسع لكل نقاط /api كطبقة أمان إضافية (فوق الحدود الأضيق الخاصة بالدخول/التسجيل والإدارة).
   app.use('/api', rateLimit(300, 5 * 60 * 1000, 'api'));
-  app.use('/api/auth', authRoutes);
-  app.use('/api/admin', adminRoutes);
+  // إدارة محتوى وصّلها فقط (جولات/صور) — الدخول/الحسابات صارت ملك المنصة على /api/auth و/api/admin.
+  app.use('/api/wslha-admin', adminRoutes);
 
   // خدمة الصور المرفوعة من طبقة التخزين (MongoDB أو الملف المحلي).
   app.get('/img/*', async (req, res) => {
@@ -103,6 +102,9 @@ function createApp() {
   return app;
 }
 
+// ملاحظة: تشغيل هذا الملف مستقلًا (بدون المرور بـ platform-server) يعني عدم وجود
+// global.__DOURK_PLATFORM__ إطلاقًا — لوحة إدارة المحتوى (/api/wslha-admin) ترفض كل الطلبات
+// بـ 401 لأن requireAdmin بـ routes/admin.js يعتمد على الجسر المشترك. متوقّع، مو خلل.
 async function start(port = PORT) {
   await db.init(); // يهيّئ التخزين (MongoDB أو ملف محلي) ويحمّل البيانات
   await seedDefaults(); // يضيف الجولات الافتراضية فقط لو ما فيه أي جولات

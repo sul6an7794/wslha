@@ -52,9 +52,7 @@
     'font-family:inherit;font-weight:700;font-size:12px;cursor:pointer}' +
     '.wau-del{background:transparent;color:#f87171;border:1px solid rgba(248,113,113,.4);border-radius:9px;padding:9px 12px;' +
     'font-family:inherit;font-weight:700;font-size:12px;cursor:pointer}' +
-    '.wau-pw{background:rgba(56,189,248,.16);color:#38bdf8;border:1px solid rgba(56,189,248,.3);border-radius:9px;padding:9px 12px;' +
-    'font-family:inherit;font-weight:700;font-size:12px;cursor:pointer}' +
-    '.wau-save:hover,.wau-adm:hover,.wau-del:hover,.wau-pw:hover{filter:brightness(1.12)}' +
+    '.wau-save:hover,.wau-adm:hover,.wau-del:hover{filter:brightness(1.12)}' +
     '@media(max-width:560px){.wau-name{flex:1 1 100%}}';
   (document.head || document.documentElement).appendChild(style);
 
@@ -84,7 +82,6 @@
         '</div>' +
         '<button class="wau-save" data-act="save" data-id="' + u.id + '">حفظ</button>' +
         '<button class="wau-adm" data-act="admin" data-id="' + u.id + '" data-val="' + (u.isAdmin ? 0 : 1) + '">' + (u.isAdmin ? 'إلغاء الإشراف' : 'ترقية') + '</button>' +
-        '<button class="wau-pw" data-act="pw" data-id="' + u.id + '" data-name="' + esc(u.username) + '">🔑 كلمة المرور</button>' +
         '<button class="wau-del" data-act="del" data-id="' + u.id + '" data-name="' + esc(u.username) + '">حذف</button>' +
         '</div>';
     }).join('');
@@ -141,12 +138,6 @@
     } else if (act === 'admin') {
       var mk = t.getAttribute('data-val') === '1';
       api('/api/admin/users/' + id, { method: 'PATCH', body: JSON.stringify({ isAdmin: mk }) }).then(load).catch(function (e) { alert(e.message); });
-    } else if (act === 'pw') {
-      var uname = t.getAttribute('data-name');
-      var pw = prompt('كلمة مرور جديدة للمستخدم «' + uname + '» (٤ أحرف على الأقل):');
-      if (pw == null || !pw.trim()) return;
-      api('/api/admin/users/' + id, { method: 'PATCH', body: JSON.stringify({ password: pw.trim() }) })
-        .then(function () { alert('تم تغيير كلمة المرور.'); }).catch(function (e) { alert(e.message); });
     } else if (act === 'del') {
       var nm = t.getAttribute('data-name');
       if (confirm('حذف المستخدم «' + nm + '»؟ لا يمكن التراجع.')) {

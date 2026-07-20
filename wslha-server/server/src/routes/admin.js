@@ -3,16 +3,25 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const db = require('../db');
-const { authMiddleware, adminMiddleware, hashPassword } = require('../auth');
 const { getActiveRoomsStats } = require('../rooms');
 const { compressImage } = require('../images');
 const { rateLimit } = require('../rateLimit');
-const { PASSWORD_MIN_LENGTH, validPassword } = require('../account-policy');
 
 const adminLimit = rateLimit(120, 60 * 1000, 'admin'); // 120 طلب بالدقيقة لكل IP — كافٍ للاستخدام العادي، يمنع إساءة الاستخدام
 const uploadLimit = rateLimit(30, 5 * 60 * 1000, 'admin-upload'); // رفع الصور أثقل، حد أضيق له
 
-router.use(adminLimit, authMiddleware, adminMiddleware);
+// تحقق هوية/إشراف عبر الجسر المشترك بدل استيراد auth.js مباشرة — auth.js صار ملك
+// platform-server، ووصّلها ما يعتمد عليه إلا عبر global.__DOURK_PLATFORM__ (نفس نمط مافيا).
+function requireAdmin(req, res, next) {
+  const bridge = global.__DOURK_PLATFORM__ && global.__DOURK_PLATFORM__.auth;
+  const user = bridge ? bridge.verifyFromCookieHeader(req.headers.cookie) : null;
+  if (!user) return res.status(401).json({ error: 'يجب تسجيل الدخول' });
+  if (!user.isAdmin) return res.status(403).json({ error: 'هذه الصفحة للمشرفين فقط' });
+  req.user = user;
+  next();
+}
+
+router.use(adminLimit, requireAdmin);
 
 function toApiRound(r) {
   return {
@@ -133,60 +142,8 @@ router.get('/stats', (req, res) => {
   res.json({
     activeRooms: live.activeRooms,
     totalPlayers: live.totalPlayers,
-    users: db.getUsersCount(),
     rounds: db.getRoundsCount(),
   });
-});
-
-// ---- إدارة المستخدمين (للمشرف) ----
-router.get('/users', (req, res) => {
-  res.json(db.getAllUsers());
-});
-
-// تعديل رصيد و/أو صلاحية مشرف لمستخدم. المشرف لا يقدر ينزّل صلاحية نفسه (تفاديًا للقفل).
-router.patch('/users/:id', async (req, res) => {
-  const id = Number(req.params.id);
-  const target = db.getUserById(id);
-  if (!target) return res.status(404).json({ error: 'المستخدم غير موجود' });
-  const { credits, isAdmin, password } = req.body || {};
-  // تصفير/تغيير كلمة مرور مستخدم من طرف المشرف — لا يوجد نظام استرجاع بالإيميل حاليًا،
-  // فهذا هو المسار الوحيد لو نسي مستخدم كلمة مروره.
-  if (password != null) {
-    const pw = String(password);
-    if (!validPassword(pw)) return res.status(400).json({ error: `كلمة المرور قصيرة جدًا (${PASSWORD_MIN_LENGTH} أحرف على الأقل)` });
-    await db.updateUserFields(id, { password_hash: hashPassword(pw) });
-  }
-  if (credits != null) {
-    const n = Number(credits);
-    if (!Number.isFinite(n) || n < 0) return res.status(400).json({ error: 'قيمة رصيد غير صحيحة' });
-    await db.setUserCredits(id, n, 'admin-adjustment');
-  }
-  if (isAdmin != null) {
-    if (id === req.user.id && !isAdmin) {
-      return res.status(400).json({ error: 'لا يمكنك إزالة صلاحية المشرف عن نفسك' });
-    }
-    await db.setUserAdmin(id, !!isAdmin);
-  }
-  const u = db.getUserById(id);
-  res.json({ id: u.id, username: u.username, isAdmin: !!u.is_admin, credits: u.credits || 0, created_at: u.created_at });
-});
-
-// سجل حركة رصيد التذاكر لمستخدم معيّن — يفيد المشرف لو حد اشتكى "ليش انخصمت مني تذكرة".
-router.get('/users/:id/credits-log', (req, res) => {
-  const id = Number(req.params.id);
-  if (!db.getUserById(id)) return res.status(404).json({ error: 'المستخدم غير موجود' });
-  res.json({ log: db.getCreditLog(id) });
-});
-
-// حذف مستخدم — لا يقدر المشرف يحذف نفسه.
-router.delete('/users/:id', async (req, res) => {
-  const id = Number(req.params.id);
-  if (id === req.user.id) {
-    return res.status(400).json({ error: 'لا يمكنك حذف حسابك أنت' });
-  }
-  const ok = await db.deleteUser(id);
-  if (!ok) return res.status(404).json({ error: 'المستخدم غير موجود' });
-  res.json({ ok: true });
 });
 
 module.exports = router;

@@ -1,5 +1,5 @@
 const AR = (v) => String(v).replace(/[0-9]/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d]);
-const PASSWORD_MIN_LENGTH = 6;
+const PHONE_RE = /^\+[1-9]\d{7,14}$/;
 
 const ICONS = {
   ticket: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1a2 2 0 0 0 0 4v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1a2 2 0 0 0 0-4z"/><path d="M13 7v10"/></svg>',
@@ -45,7 +45,10 @@ const App = {
   state: {
     screen: 'home',
     user: null,
-    authMode: 'login',
+    otpStage: 'phone',
+    otpPhone: '',
+    otpName: '',
+    otpSending: false,
     authError: '',
     pendingCreate: false,
     pendingJoinCode: '',
@@ -144,20 +147,41 @@ const App = {
     input.value = input.value.replace(/\D/g, '').slice(0, 6);
   },
 
-  setAuthMode(mode) { this.state.authMode = mode; this.state.authError = ''; this.render(); },
+  backToPhoneStep() { this.state.otpStage = 'phone'; this.state.authError = ''; this.render(); },
 
-  async submitAuth() {
-    const username = document.getElementById('authName').value.trim();
-    const password = document.getElementById('authPass').value;
-    const password2 = document.getElementById('authPass2') ? document.getElementById('authPass2').value : '';
-    if (!username) return this.setAuthError('محتاجين اسمك أول');
-    if (password.length < PASSWORD_MIN_LENGTH) return this.setAuthError(`خلّ كلمة المرور ${AR(PASSWORD_MIN_LENGTH)} أحرف أو أكثر`);
-    if (this.state.authMode === 'register' && password !== password2) return this.setAuthError('كلمتا المرور مو متطابقتين، تأكد منهم');
+  async requestOtp() {
+    const phone = document.getElementById('authPhone').value.trim();
+    if (!PHONE_RE.test(phone)) return this.setAuthError('أدخل رقم جوال صحيح بالصيغة الدولية (مثال: +9665xxxxxxxx)');
+    this.state.otpPhone = phone;
+    this.state.otpName = (document.getElementById('authName').value || '').trim();
+    this.state.otpSending = true;
+    this.setAuthError('');
+    this.render();
     try {
-      const path = this.state.authMode === 'register' ? '/api/auth/register' : '/api/auth/login';
-      const { user } = await this.api(path, { method: 'POST', body: JSON.stringify({ username, password }) });
+      await this.api('/api/auth/otp/request', { method: 'POST', body: JSON.stringify({ phone }) });
+      this.state.otpStage = 'code';
+      this.state.otpSending = false;
+      this.render();
+    } catch (e) {
+      this.state.otpSending = false;
+      this.setAuthError(e.message);
+      this.render();
+    }
+  },
+
+  async verifyOtpCode() {
+    const otp = document.getElementById('authOtp').value.trim();
+    if (!otp) return this.setAuthError('أدخل رمز التحقق');
+    try {
+      const { user } = await this.api('/api/auth/otp/verify', {
+        method: 'POST',
+        body: JSON.stringify({ phone: this.state.otpPhone, otp, username: this.state.otpName || undefined }),
+      });
       this.state.user = user;
-      this.showToast(this.state.authMode === 'register' ? 'تم إنشاء حسابك — عندك تذكرة تنتظرك' : 'حيّاك بعودتك يا ' + user.username);
+      this.state.otpStage = 'phone';
+      this.state.otpPhone = '';
+      this.state.otpName = '';
+      this.showToast('حيّاك يا ' + user.username);
       const pendingCreate = this.state.pendingCreate;
       const pendingJoinCode = this.state.pendingJoinCode;
       this.state.pendingCreate = false;
@@ -264,27 +288,12 @@ const App = {
     }
   },
 
-  async changePassword() {
-    const currentPassword = document.getElementById('profileCurrentPassword').value;
-    const newPassword = document.getElementById('profileNewPassword').value;
-    if (newPassword.length < PASSWORD_MIN_LENGTH) return this.showToast(`كلمة المرور الجديدة ${AR(PASSWORD_MIN_LENGTH)} أحرف أو أكثر`);
-    try {
-      await this.api('/api/auth/profile', { method: 'PATCH', body: JSON.stringify({ currentPassword, newPassword }) });
-      this.showToast('تم تغيير كلمة المرور');
-      this.render();
-    } catch (e) {
-      this.showToast(e.message);
-    }
-  },
-
   showDeleteConfirm() { this.state.deleteConfirm = true; this.render(); },
   cancelDeleteAccount() { this.state.deleteConfirm = false; this.render(); },
 
   async deleteAccount() {
-    const currentPassword = document.getElementById('deleteAccountPassword').value;
-    if (!currentPassword) return this.showToast('اكتب كلمة المرور للتأكيد');
     try {
-      await this.api('/api/auth/profile', { method: 'DELETE', body: JSON.stringify({ currentPassword }) });
+      await this.api('/api/auth/profile', { method: 'DELETE' });
       this.state.user = null;
       this.state.deleteConfirm = false;
       this.showToast('تم حذف الحساب');
@@ -382,7 +391,23 @@ const App = {
 
   screenAuth() {
     const s = this.state;
-    const isRegister = s.authMode === 'register';
+    const isCodeStage = s.otpStage === 'code';
+    const errorSlot = '<div id="authErrorSlot">' + (s.authError ? '<div class="error-banner">' + this.escape(s.authError) + '</div>' : '') + '</div>';
+    const phoneStep = '' +
+      '<div class="form-col">' +
+        '<input id="authPhone" type="tel" class="field" placeholder="رقم الجوال — مثال: +9665xxxxxxxx">' +
+        '<input id="authName" class="field" maxlength="20" placeholder="اسمك (يظهر لربعك، أول مرة بس)">' +
+        '<div class="hint-banner">' + ICONS.ticket + ' أول تذكرة علينا — تجي مع حسابك الجديد</div>' +
+        errorSlot +
+        '<button class="btn-primary" ' + (s.otpSending ? 'disabled' : '') + ' onclick="App.requestOtp()">' + (s.otpSending ? 'جارِ الإرسال...' : 'إرسال رمز التحقق') + '</button>' +
+      '</div>';
+    const codeStep = '' +
+      '<div class="form-col">' +
+        '<input id="authOtp" inputmode="numeric" autocomplete="one-time-code" class="field" placeholder="رمز التحقق">' +
+        errorSlot +
+        '<button class="btn-primary" onclick="App.verifyOtpCode()">تأكيد الدخول</button>' +
+        '<button class="btn-link" onclick="App.backToPhoneStep()">تغيير الرقم</button>' +
+      '</div>';
     return '' +
       '<main data-screen="auth">' +
         '<button class="back-btn" onclick="App.go(\'home\')">' + ICONS.back + ' رجوع</button>' +
@@ -390,18 +415,7 @@ const App = {
           '<h1 style="font-size:32px;margin:0 0 8px;">حيّاك في دورك</h1>' +
           '<p style="font-size:14px;color:var(--subtext);margin:0;">دقيقة وحدة وتكون داخل اللعب</p>' +
         '</div>' +
-        '<div class="tabs">' +
-          '<button class="' + (!isRegister ? 'active' : '') + '" onclick="App.setAuthMode(\'login\')">تسجيل دخول</button>' +
-          '<button class="' + (isRegister ? 'active' : '') + '" onclick="App.setAuthMode(\'register\')">حساب جديد</button>' +
-        '</div>' +
-        '<div class="form-col">' +
-          '<input id="authName" class="field" maxlength="20" placeholder="اسم المستخدم">' +
-          '<input id="authPass" type="password" class="field" placeholder="كلمة المرور">' +
-          (isRegister ? '<input id="authPass2" type="password" class="field" placeholder="تأكيد كلمة المرور">' : '') +
-          (isRegister ? '<div class="hint-banner">' + ICONS.ticket + ' أول تذكرة علينا — تجي مع حسابك الجديد</div>' : '') +
-          '<div id="authErrorSlot">' + (s.authError ? '<div class="error-banner">' + this.escape(s.authError) + '</div>' : '') + '</div>' +
-          '<button class="btn-primary" onclick="App.submitAuth()">' + (isRegister ? 'إنشاء الحساب' : 'دخول') + '</button>' +
-        '</div>' +
+        (isCodeStage ? codeStep : phoneStep) +
         '<div class="footer-tag">دورك — تلعبها صح</div>' +
       '</main>';
   },
@@ -511,16 +525,10 @@ const App = {
           '<div class="field-label">تغيير الاسم</div>' +
           '<div style="display:flex;gap:8px;"><input id="profileNameInput" class="field" maxlength="20" placeholder="الاسم الجديد" style="flex:1;min-width:0;"><button class="btn-primary" style="width:auto;margin-top:0;padding:12px 20px;" onclick="App.saveName()">حفظ</button></div>' +
          '</div>' +
-         '<div class="form-col profile-password" style="margin-bottom:18px;">' +
-           '<div class="field-label">تغيير كلمة المرور</div>' +
-           '<input id="profileCurrentPassword" class="field" type="password" autocomplete="current-password" placeholder="كلمة المرور الحالية">' +
-           '<input id="profileNewPassword" class="field" type="password" autocomplete="new-password" placeholder="كلمة المرور الجديدة (٦ أحرف أو أكثر)">' +
-           '<button class="row-btn" onclick="App.changePassword()"><span>حفظ كلمة المرور</span><span style="color:var(--dim);">' + ICONS.chevron + '</span></button>' +
-         '</div>' +
          '<button class="row-btn" onclick="App.go(\'tickets\')"><span style="display:flex;align-items:center;gap:10px;color:#E0B86A;">' + ICONS.ticket + ' <span style="color:var(--text);">تذاكري ورصيدي</span></span><span style="color:var(--dim);">' + ICONS.chevron + '</span></button>' +
          '<button class="danger-btn" onclick="App.logout()">تسجيل الخروج</button>' +
          (s.deleteConfirm
-           ? '<div class="delete-confirm"><div class="field-label">حذف الحساب نهائيًا</div><p>سيُحذف حسابك وسجلّه. اكتب كلمة المرور للتأكيد.</p><input id="deleteAccountPassword" class="field" type="password" autocomplete="current-password" placeholder="كلمة المرور الحالية"><div><button class="danger-btn" onclick="App.deleteAccount()">تأكيد الحذف</button><button class="btn-link" onclick="App.cancelDeleteAccount()">إلغاء</button></div></div>'
+           ? '<div class="delete-confirm"><div class="field-label">حذف الحساب نهائيًا</div><p>سيُحذف حسابك وسجلّه، بدون إمكانية تراجع.</p><div><button class="danger-btn" onclick="App.deleteAccount()">تأكيد الحذف</button><button class="btn-link" onclick="App.cancelDeleteAccount()">إلغاء</button></div></div>'
            : '<button class="btn-link delete-link" onclick="App.showDeleteConfirm()">حذف الحساب</button>') +
          '<div class="footer-tag">دورك — تلعبها صح</div>' +
       '</main>';

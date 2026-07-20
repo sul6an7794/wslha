@@ -1,18 +1,23 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { hashPassword, verifyPassword, signToken, authMiddleware, setAuthCookie, clearAuthCookie } = require('../auth');
+const { signToken, authMiddleware, setAuthCookie, clearAuthCookie } = require('../auth');
 const { rateLimit } = require('../rateLimit');
-const { PASSWORD_MIN_LENGTH, validPassword } = require('../account-policy');
+const authentica = require('../authentica');
 
-// تمثيل عام للمستخدم (بدون كلمة المرور) — يُرسل للواجهة.
+// تمثيل عام للمستخدم (بدون رقم الجوال) — يُرسل للواجهة.
 function publicUser(u) {
   return { id: u.id, username: u.username, isAdmin: !!u.is_admin, credits: u.credits || 0 };
 }
 
 // اسم المستخدم: حروف/أرقام/مسافة/_ . - فقط (يمنع رموز XSS مثل < > " ').
 const NAME_RE = /^[\p{L}\p{N} _.-]{2,40}$/u;
-const authLimit = rateLimit(20, 5 * 60 * 1000, 'auth'); // 20 محاولة كل 5 دقائق لكل IP — ضد تخمين كلمة المرور
+// رقم دولي E.164: + متبوعًا برقم لا يبدأ بصفر، 8-15 خانة إجمالًا (تنسيق Authentica).
+const PHONE_RE = /^\+[1-9]\d{7,14}$/;
+
+// إرسال الرمز يكلّف رسالة SMS فعلية — حد أضيق من التحقق لمنع استنزاف الرصيد بالإساءة.
+const otpRequestLimit = rateLimit(5, 5 * 60 * 1000, 'otp-request');
+const otpVerifyLimit = rateLimit(20, 5 * 60 * 1000, 'otp-verify');
 const profileLimit = rateLimit(30, 5 * 60 * 1000, 'profile');
 const BOOTSTRAP_ADMIN_USERNAME = String(process.env.ADMIN_BOOTSTRAP_USERNAME || '').trim();
 const BOOTSTRAP_ADMIN_TOKEN = String(process.env.ADMIN_BOOTSTRAP_TOKEN || '');
@@ -22,41 +27,47 @@ function isBootstrapAdmin(name, token) {
   return name === BOOTSTRAP_ADMIN_USERNAME && String(token || '') === BOOTSTRAP_ADMIN_TOKEN;
 }
 
-router.post('/register', authLimit, async (req, res) => {
-  const { username, password, bootstrapToken } = req.body || {};
-  const name = String(username || '').trim();
-  if (!name || !password) {
-    return res.status(400).json({ error: 'الاسم وكلمة المرور مطلوبة' });
+function randomDisplayName() {
+  return 'لاعب-' + String(Math.floor(1000 + Math.random() * 9000));
+}
+
+router.post('/otp/request', otpRequestLimit, async (req, res) => {
+  const phone = String((req.body || {}).phone || '').trim();
+  if (!PHONE_RE.test(phone)) {
+    return res.status(400).json({ error: 'رقم الجوال غير صحيح (استخدم الصيغة الدولية، مثال: +9665XXXXXXXX)' });
   }
-  if (!NAME_RE.test(name)) {
-    return res.status(400).json({ error: 'الاسم يحتوي رموزًا غير مسموحة (استخدم حروفًا وأرقامًا فقط، 2-40 خانة)' });
+  try {
+    await authentica.sendOtp(phone);
+    // لا نكشف هل الرقم مسجّل من قبل أو لا (يمنع تعداد الحسابات) — نفس الرد دائمًا.
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(e.status && e.status < 500 ? 400 : 500).json({ error: e.message });
   }
-  if (!validPassword(password)) {
-    return res.status(400).json({ error: `كلمة المرور قصيرة جدًا (${PASSWORD_MIN_LENGTH} أحرف على الأقل)` });
+});
+
+router.post('/otp/verify', otpVerifyLimit, async (req, res) => {
+  const { phone: rawPhone, otp, username, bootstrapToken } = req.body || {};
+  const phone = String(rawPhone || '').trim();
+  if (!PHONE_RE.test(phone) || !String(otp || '').trim()) {
+    return res.status(400).json({ error: 'الرقم أو الرمز مفقود' });
   }
-  if (db.getUserByUsername(name)) {
-    return res.status(409).json({ error: 'الاسم مستخدم من قبل' });
+  try {
+    await authentica.verifyOtp(phone, String(otp).trim());
+  } catch (e) {
+    return res.status(e.status && e.status < 500 ? 401 : 500).json({ error: e.message });
   }
-  // لا يمنح أي تسجيل عام صلاحية مشرف. التهيئة الأولى تتطلب اسمًا ورمزًا سريًا من بيئة الخادم.
-  const hasAdmin = db.getAllUsers().some((existing) => !!existing.is_admin);
-  const isAdmin = !hasAdmin && isBootstrapAdmin(name, bootstrapToken);
-  const hash = hashPassword(password);
-  const user = await db.insertUser({ username: name, password_hash: hash, is_admin: isAdmin });
+  let user = db.getUserByPhone(phone);
+  if (!user) {
+    let name = String(username || '').trim();
+    if (!name || !NAME_RE.test(name)) name = randomDisplayName();
+    // لا يمنح أي تسجيل عام صلاحية مشرف. التهيئة الأولى تتطلب اسمًا ورمزًا سريًا من بيئة الخادم.
+    const hasAdmin = db.getAllUsers().some((existing) => !!existing.isAdmin);
+    const isAdmin = !hasAdmin && isBootstrapAdmin(name, bootstrapToken);
+    user = await db.insertUser({ username: name, phone, is_admin: isAdmin });
+  }
   const token = signToken(user);
   setAuthCookie(req, res, token);
   // نرجّع التوكن بالجسم كمان للنسخة المستقلة من الواجهة (أصل مختلف ما توصله الكوكي).
-  res.json({ token, user: publicUser(user) });
-});
-
-router.post('/login', authLimit, (req, res) => {
-  const { username, password } = req.body || {};
-  const name = String(username || '').trim();
-  const user = db.getUserByUsername(name);
-  if (!user || !verifyPassword(password || '', user.password_hash)) {
-    return res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
-  }
-  const token = signToken(user);
-  setAuthCookie(req, res, token);
   res.json({ token, user: publicUser(user) });
 });
 
@@ -78,12 +89,12 @@ router.get('/me/credits-log', authMiddleware, (req, res) => {
   res.json({ log: db.getCreditLog(req.user.id) });
 });
 
-// تعديل الملف الشخصي: تغيير الاسم و/أو كلمة المرور.
+// تعديل الملف الشخصي: تغيير الاسم فقط (لا كلمة مرور بعد الآن).
 router.patch('/profile', profileLimit, authMiddleware, async (req, res) => {
   const user = db.getUserById(req.user.id);
   if (!user) return res.status(404).json({ error: 'الحساب غير موجود' });
 
-  const { username, currentPassword, newPassword } = req.body || {};
+  const { username } = req.body || {};
   const fields = {};
 
   const newName = String(username || '').trim();
@@ -98,16 +109,6 @@ router.patch('/profile', profileLimit, authMiddleware, async (req, res) => {
     fields.username = newName;
   }
 
-  if (newPassword) {
-    if (!validPassword(newPassword)) {
-      return res.status(400).json({ error: `كلمة المرور الجديدة قصيرة جدًا (${PASSWORD_MIN_LENGTH} أحرف على الأقل)` });
-    }
-    if (!verifyPassword(currentPassword || '', user.password_hash)) {
-      return res.status(401).json({ error: 'كلمة المرور الحالية غير صحيحة' });
-    }
-    fields.password_hash = hashPassword(newPassword);
-  }
-
   if (!Object.keys(fields).length) {
     return res.status(400).json({ error: 'لا يوجد تغيير' });
   }
@@ -119,13 +120,12 @@ router.patch('/profile', profileLimit, authMiddleware, async (req, res) => {
   res.json({ user: publicUser(updated), token });
 });
 
+// حذف الحساب: الكوكي HttpOnly نفسه إثبات الملكية (نفس منطق الثقة في authMiddleware) — لا كلمة
+// مرور نعيد التأكد منها بعد الآن، وإعادة طلب OTP هنا كانت ستزيد الاحتكاك بلا فائدة أمنية حقيقية.
 router.delete('/profile', profileLimit, authMiddleware, async (req, res) => {
   const user = db.getUserById(req.user.id);
   if (!user) return res.status(404).json({ error: 'الحساب غير موجود' });
-  if (!verifyPassword((req.body || {}).currentPassword || '', user.password_hash)) {
-    return res.status(401).json({ error: 'كلمة المرور الحالية غير صحيحة' });
-  }
-  if (user.is_admin && db.getAllUsers().filter((existing) => !!existing.is_admin).length === 1) {
+  if (user.is_admin && db.getAllUsers().filter((existing) => !!existing.isAdmin).length === 1) {
     return res.status(400).json({ error: 'عيّن مشرفًا آخر قبل حذف حساب المشرف الوحيد' });
   }
   await db.deleteUser(user.id);

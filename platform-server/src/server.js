@@ -17,16 +17,20 @@ if (!ALLOWED_ORIGIN) {
 const MAFIA_DIR = path.join(__dirname, '..', '..', 'mafia', 'server');
 const WSLHA_DIR = path.join(__dirname, '..', '..', 'wslha-server', 'server');
 
-const wslhaDb = require(path.join(WSLHA_DIR, 'src', 'db.js'));
+// حسابات المنصة (مستخدمين/تذاكر/دخول) — ملك platform-server نفسه، لا يعتمد على أي لعبة.
+// يبقى شغّال حتى لو انحذفت لعبة وصّلها أو مافيا لاحقًا.
+const accountsDb = require('./db');
 // لازم يتسجّل قبل أي require للعبتين — كل وحدة منهم تتحقق من وجود global.__DOURK_PLATFORM__
 // وقت إنشاء الغرفة/إعادة اللعبة (واجهة موحّدة واحدة بدل singletons مبعثرة).
-require('./platform-global').install(wslhaDb);
+require('./platform-global').install(accountsDb);
 
 const { createApp: mafiaCreateApp } = require(path.join(MAFIA_DIR, 'src', 'server.js'));
 const { attachSocketHandlers: attachMafiaSocket } = require(path.join(MAFIA_DIR, 'src', 'socket.js'));
 const mafiaRooms = require(path.join(MAFIA_DIR, 'src', 'rooms.js'));
 const { sweepAbandonedRooms: sweepMafiaRooms } = mafiaRooms;
 
+// قاعدة محتوى وصّلها (الجولات/الصور فقط، لا حسابات) — تبقى ملك وصّلها نفسها.
+const wslhaContentDb = require(path.join(WSLHA_DIR, 'src', 'db.js'));
 const { seedDefaults } = require(path.join(WSLHA_DIR, 'src', 'seed.js'));
 const { createApp: wslhaCreateApp } = require(path.join(WSLHA_DIR, 'src', 'server.js'));
 const { registerSocket: registerWslhaSocket } = require(path.join(WSLHA_DIR, 'src', 'socket.js'));
@@ -36,6 +40,8 @@ const { sweepAbandonedRooms: sweepWslhaRooms } = wslhaRooms;
 const registry = require('./rooms-registry');
 const ticketLedger = require('./ticket-ledger');
 const roomsRoute = require('./routes/rooms');
+const authRoutes = require('./routes/auth');
+const adminRoutes = require('./routes/admin');
 const roomSnapshots = require('./room-snapshots');
 
 const PLATFORM_CSP = [
@@ -52,7 +58,8 @@ const PLATFORM_CSP = [
 ].join('; ');
 
 async function start(port = PORT) {
-  await wslhaDb.init();
+  await accountsDb.init();
+  await wslhaContentDb.init();
   await seedDefaults();
   const previousSnapshot = roomSnapshots.load();
   if (previousSnapshot) {
@@ -76,6 +83,10 @@ async function start(port = PORT) {
     next();
   });
 
+  // تحليل جسم JSON — لازم قبل أي مسار /api يقرأ req.body (auth/admin/rooms هنا على المنصة
+  // نفسها الآن، مو بره داخل تطبيق فرعي مثل وصّلها اللي كان يوفّرها ضمنيًا سابقًا).
+  app.use(express.json({ limit: '1mb' }));
+
   // واجهة المنصة (الرئيسية): اختيار اللعبة، الحساب، التذاكر، الملف الشخصي.
   app.use(express.static(path.join(__dirname, '..', 'public')));
 
@@ -84,14 +95,20 @@ async function start(port = PORT) {
   const wslhaIndex = path.join(WSLHA_DIR, 'public', 'index.html');
   app.get(['/wslha', '/wslha/'], (req, res) => res.sendFile(wslhaIndex));
 
+  // حسابات/دخول/إدارة مستخدمين — ملك المنصة نفسها، مشتركة لكل الألعاب، تعمل حتى لو انحذفت
+  // أي لعبة لاحقًا (لا تعتمد على مجلد وصّلها أو مافيا إطلاقًا).
+  app.use('/api/auth', authRoutes);
+  app.use('/api/admin', adminRoutes);
+
   // تسجيل/دخول/تذاكر/إدارة — مسار موحّد لكل اللعبتين، قبل تركيب أي سيرفر لعبة.
   app.use('/api/rooms', roomsRoute);
 
   // مافيا: أصولها كلها مسارات نسبية، فتُركَّب بأمان تحت بادئة فرعية.
   app.use('/mafia', mafiaCreateApp());
 
-  // وصّلها: أصولها (خطوط، ملفات مساعدة، /api/auth، /api/admin، /img، /uploads) مسارات مطلقة من الجذر،
-  // فتُركَّب على الجذر كاملة — هذا أيضًا يوفّر /api/auth و/api/admin المشتركين لكل المنصة.
+  // وصّلها: أصولها (خطوط، ملفات مساعدة، /img، /uploads) مسارات مطلقة من الجذر، فتُركَّب على الجذر
+  // كاملة. عندها فقط /api/wslha-admin لإدارة محتواها الخاص (الجولات/الصور) — لا تلمس /api/auth
+  // ولا /api/admin إطلاقًا بعد الآن.
   app.use(wslhaCreateApp());
 
   const server = http.createServer(app);
@@ -105,7 +122,7 @@ async function start(port = PORT) {
   const wslhaSweep = setInterval(sweepWslhaRooms, 5 * 60 * 1000);
   const mafiaSweep = setInterval(sweepMafiaRooms, 5 * 60 * 1000);
   const registrySweep = registry.startSweep();
-  const ticketSweep = ticketLedger.startSweep(wslhaDb);
+  const ticketSweep = ticketLedger.startSweep(accountsDb);
   const snapshotRooms = () => {
     try {
       roomSnapshots.save({

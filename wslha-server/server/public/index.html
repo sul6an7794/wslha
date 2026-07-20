@@ -168,14 +168,6 @@
               <button onClick="{{ saveName }}" style="font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:13px; color:#fff; background:linear-gradient(135deg,#818cf8,#ec4899); border:none; padding:0 15px; border-radius:10px; cursor:pointer; white-space:nowrap;" style-hover="filter:brightness(1.08);">حفظ</button>
             </div>
             </sc-if>
-            <button onClick="{{ togglePassEdit }}" style="display:flex; align-items:center; justify-content:space-between; width:100%; font-family:'Thmanyah Sans',sans-serif; font-size:12px; font-weight:700; color:#a9a7cc; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); border-radius:10px; padding:9px 11px; margin-bottom:8px; cursor:pointer;" style-hover="background:rgba(255,255,255,.07); color:#f1f0ff;"><span>تغيير كلمة المرور</span><span style="font-size:14px; line-height:1; color:#c4b5fd;">{{ passSign }}</span></button>
-            <sc-if value="{{ showPassEdit }}" hint-placeholder-val="{{ false }}">
-            <input type="password" value="{{ curPass }}" onInput="{{ setCurPass }}" placeholder="كلمة المرور الحالية" style="width:100%; font-family:'Thmanyah Sans',sans-serif; font-size:14px; color:#f1f0ff; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.14); border-radius:10px; padding:9px 11px; margin-bottom:8px; outline:none;" style-focus="border-color:rgba(129,140,248,.7);">
-            <div style="display:flex; gap:7px;">
-              <input type="password" value="{{ newPass }}" onInput="{{ setNewPass }}" placeholder="كلمة المرور الجديدة" style="flex:1; min-width:0; font-family:'Thmanyah Sans',sans-serif; font-size:14px; color:#f1f0ff; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.14); border-radius:10px; padding:9px 11px; outline:none;" style-focus="border-color:rgba(129,140,248,.7);">
-              <button onClick="{{ savePass }}" style="font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:13px; color:#fff; background:linear-gradient(135deg,#818cf8,#ec4899); border:none; padding:0 15px; border-radius:10px; cursor:pointer; white-space:nowrap;" style-hover="filter:brightness(1.08);">حفظ</button>
-            </div>
-            </sc-if>
           </div>
           </sc-if>
           <button onClick="{{ logout }}" style="display:flex; align-items:center; justify-content:center; gap:8px; width:100%; margin-top:14px; font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:12.5px; color:#f87171; background:rgba(244,63,94,.1); border:1px solid rgba(244,63,94,.25); padding:7px 10px; border-radius:11px; cursor:pointer;" style-hover="background:rgba(244,63,94,.18); color:#fff;">{{ iconLogout }} تسجيل الخروج</button>
@@ -395,46 +387,8 @@
 </div>
 </sc-if>
 
-<!-- LOGIN -->
-<sc-if value="{{ isLogin }}" hint-placeholder-val="{{ false }}">
-<div style="position:relative; z-index:1; max-width:460px; margin:0 auto; padding:56px 24px 80px; animation:tqIn .4s ease;" data-screen-label="Login">
-  <div style="background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); border-radius:28px; padding:40px; backdrop-filter:blur(16px); box-shadow:0 30px 80px rgba(0,0,0,.4);">
-    <div style="text-align:center; margin-bottom:26px;">
-      <div style="width:54px; height:54px; margin:0 auto 14px; border-radius:16px; background:linear-gradient(135deg,#818cf8,#ec4899); display:flex; align-items:center; justify-content:center; box-shadow:0 10px 28px rgba(236,72,153,.4);">{{ iconKey }}</div>
-      <h1 style="font-size:28px; font-weight:900; margin:0;">{{ loginTitle }}</h1>
-    </div>
-    <div style="display:flex; background:rgba(255,255,255,.06); border-radius:30px; padding:4px; margin-bottom:26px; gap:4px;">
-      <button onClick="{{ setToLogin }}" style="flex:1; font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:15px; padding:10px; border-radius:26px; border:none; cursor:pointer; background:{{ loginTabBg }}; color:{{ loginTabCol }}; transition:all .2s;">تسجيل الدخول</button>
-      <button onClick="{{ setToRegister }}" style="flex:1; font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:15px; padding:10px; border-radius:26px; border:none; cursor:pointer; background:{{ regTabBg }}; color:{{ regTabCol }}; transition:all .2s;">حساب جديد</button>
-    </div>
-    <sc-if value="{{ hasAuthErr }}" hint-placeholder-val="{{ false }}">
-      <div style="font-size:13.5px; font-weight:700; color:#f87171; background:rgba(244,63,94,.1); border:1px solid rgba(244,63,94,.28); border-radius:12px; padding:11px 14px; margin-bottom:20px; text-align:center;">{{ authErr }}</div>
-    </sc-if>
-    <sc-if value="{{ isLoginTab }}" hint-placeholder-val="{{ true }}">
-    <div>
-      <label style="display:block; font-size:14px; font-weight:700; margin-bottom:8px; color:#d8d6ee;">اسم المستخدم</label>
-      <input value="{{ loginName }}" onInput="{{ setLoginName }}" placeholder="مثال: سلطان" style="width:100%; font-family:'Thmanyah Sans',sans-serif; font-size:16px; color:#f1f0ff; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.14); border-radius:14px; padding:14px 16px; margin-bottom:16px; outline:none;" style-focus="border-color:rgba(129,140,248,.7);">
-      <label style="display:block; font-size:14px; font-weight:700; margin-bottom:8px; color:#d8d6ee;">كلمة المرور</label>
-      <input type="password" value="{{ loginPass }}" onInput="{{ setLoginPass }}" placeholder="••••••••" style="width:100%; font-family:'Thmanyah Sans',sans-serif; font-size:16px; color:#f1f0ff; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.14); border-radius:14px; padding:14px 16px; margin-bottom:24px; outline:none;" style-focus="border-color:rgba(129,140,248,.7);">
-      <button onClick="{{ doLogin }}" style="width:100%; font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:17px; color:#fff; background:linear-gradient(135deg,#818cf8,#ec4899); border:none; padding:15px; border-radius:16px; cursor:pointer; box-shadow:0 14px 32px rgba(236,72,153,.45);" style-hover="filter:brightness(1.08);">دخول</button>
-    </div>
-    </sc-if>
-    <sc-if value="{{ isRegTab }}" hint-placeholder-val="{{ false }}">
-    <div>
-      <label style="display:block; font-size:14px; font-weight:700; margin-bottom:8px; color:#d8d6ee;">الاسم</label>
-      <input value="{{ regName }}" onInput="{{ setRegName }}" placeholder="اسمك الكامل" style="width:100%; font-family:'Thmanyah Sans',sans-serif; font-size:16px; color:#f1f0ff; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.14); border-radius:14px; padding:14px 16px; margin-bottom:16px; outline:none;" style-focus="border-color:rgba(129,140,248,.7);">
-      <label style="display:block; font-size:14px; font-weight:700; margin-bottom:8px; color:#d8d6ee;">كلمة المرور</label>
-      <input type="password" value="{{ regPass }}" onInput="{{ setRegPass }}" placeholder="••••••••" style="width:100%; font-family:'Thmanyah Sans',sans-serif; font-size:16px; color:#f1f0ff; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.14); border-radius:14px; padding:14px 16px; margin-bottom:16px; outline:none;" style-focus="border-color:rgba(129,140,248,.7);">
-      <label style="display:block; font-size:14px; font-weight:700; margin-bottom:8px; color:#d8d6ee;">تأكيد كلمة المرور</label>
-      <input type="password" value="{{ regConfirm }}" onInput="{{ setRegConfirm }}" placeholder="••••••••" style="width:100%; font-family:'Thmanyah Sans',sans-serif; font-size:16px; color:#f1f0ff; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.14); border-radius:14px; padding:14px 16px; margin-bottom:24px; outline:none;" style-focus="border-color:rgba(129,140,248,.7);">
-      <button onClick="{{ doRegister }}" style="width:100%; font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:17px; color:#fff; background:linear-gradient(135deg,#818cf8,#ec4899); border:none; padding:15px; border-radius:16px; cursor:pointer; box-shadow:0 14px 32px rgba(236,72,153,.45);" style-hover="filter:brightness(1.08);">إنشاء الحساب</button>
-    </div>
-    </sc-if>
-    <button onClick="{{ goHome }}" style="width:100%; margin-top:14px; font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:15px; color:#a9a7cc; background:none; border:none; padding:10px; cursor:pointer;" style-hover="color:#fff;">← العودة للرئيسية</button>
-  </div>
-</div>
-</sc-if>
-
+<!-- LOGIN: لا يوجد نموذج دخول/تسجيل مستقل هنا — الحساب يُدار من صفحة دورك الرئيسية،
+     وgoLogin يُعيد التوجيه لها مباشرة بدل عرض شاشة موازية (راجع goLogin وcreateRoom). -->
 <!-- TEAMS -->
 <sc-if value="{{ isTeams }}" hint-placeholder-val="{{ false }}">
 <div style="position:relative; z-index:1; max-width:720px; margin:0 auto; padding:56px 24px 72px; animation:tqIn .4s ease;" data-screen-label="Teams">
@@ -739,7 +693,7 @@ class Component extends DCLogic {
       catch (e) { return 'home'; }
     })(),
     maxPlayers: 3, created: false, roomCode: '',
-    user: null, loginName: '', loginTab: 'login', regName: '', regPass: '', regConfirm: '',
+    user: null,
     loading: false, offline: false, joinCode: '', joinName: '',
     elapsed: 0, roundIndex: 0, answer: '', locked: 0, showHint: false, gameScore: 0, hintText: '', hintShown: false, wrongCount: 0, resultsTickerScore: 0,
     role: 'captain',
@@ -750,8 +704,8 @@ class Component extends DCLogic {
     serverTeams: [], myTeamIndex: null, namingTeam: null, teamNameInput: '', startRequested: false, shareCopied: false, zoomOpen: false, countdown: 0,
     // الحساب: القوائم والتذاكر وتعديل الملف
     menuOpen: false, creditOpen: false, editMode: false, editSection: null,
-    profileName: '', curPass: '', newPass: '', profileMsg: '', profileMsgType: '',
-    authErr: '', credits: 10, buyNote: false,
+    profileName: '', profileMsg: '', profileMsgType: '',
+    credits: 10, buyNote: false,
     isMobile: false, mobileNavOpen: false,
   };
 
@@ -878,7 +832,6 @@ class Component extends DCLogic {
   toggleCredit() { this.setState(s => ({ creditOpen: !s.creditOpen, menuOpen: false })); }
   toggleEdit() { this.setState(s => ({ editMode: !s.editMode, editSection: null, profileMsg: '', profileName: s.editMode ? s.profileName : ((s.user && s.user.username) || '') })); }
   toggleNameEdit() { this.setState(s => ({ editSection: s.editSection === 'name' ? null : 'name', profileMsg: '' })); }
-  togglePassEdit() { this.setState(s => ({ editSection: s.editSection === 'pass' ? null : 'pass', profileMsg: '' })); }
   closeMenus() { this.setState({ menuOpen: false, creditOpen: false, mobileNavOpen: false }); }
   buyTickets() {
     this.setState({ buyNote: true });
@@ -886,8 +839,6 @@ class Component extends DCLogic {
     this._buyT = setTimeout(() => this.setState({ buyNote: false }), 3000);
   }
   setProfileName(e) { this.setState({ profileName: e.target.value }); }
-  setCurPass(e) { this.setState({ curPass: e.target.value }); }
-  setNewPass(e) { this.setState({ newPass: e.target.value }); }
 
   async saveName() {
     const username = (this.state.profileName || '').trim();
@@ -899,18 +850,6 @@ class Component extends DCLogic {
       this.setState({ user, profileMsg: 'تم تغيير الاسم بنجاح', profileMsgType: 'ok', credits: (user.credits != null ? user.credits : this.state.credits) });
     } catch (e) { this.setState({ profileMsg: this._errText(e), profileMsgType: 'err' }); }
   }
-  async savePass() {
-    const currentPassword = this.state.curPass || '';
-    const newPassword = this.state.newPass || '';
-    if (!currentPassword || !newPassword) { this.setState({ profileMsg: 'أدخل كلمة المرور الحالية والجديدة', profileMsgType: 'err' }); return; }
-    try {
-      const res = await this.api('/api/auth/profile', { method: 'PATCH', body: JSON.stringify({ currentPassword, newPassword }) });
-      const user = res.user || this.state.user;
-      this._saveSession(user);
-      this.setState({ curPass: '', newPass: '', user, profileMsg: 'تم تغيير كلمة المرور بنجاح', profileMsgType: 'ok' });
-    } catch (e) { this.setState({ profileMsg: this._errText(e), profileMsgType: 'err' }); }
-  }
-
   openZoom() { this.setState({ zoomOpen: true }); }
   closeZoom() { this.setState({ zoomOpen: false }); }
 
@@ -1093,7 +1032,7 @@ class Component extends DCLogic {
     this.stopTimer(); this.stopPenalty();
     const extra = {};
     if (page === 'game') { extra.elapsed = 0; extra.roundIndex = 0; extra.answer = ''; extra.locked = 0; extra.showHint = false; extra.gameScore = 0; }
-    this.setState({ page, created: false, menuOpen: false, creditOpen: false, editMode: false, mobileNavOpen: false, authErr: '', ...extra }, () => {
+    this.setState({ page, created: false, menuOpen: false, creditOpen: false, editMode: false, mobileNavOpen: false, ...extra }, () => {
       if (page === 'game' && !this.serverConnected) this.startTimer();
       if (page === 'admin') this.loadAdmin();
     });
@@ -1143,37 +1082,6 @@ class Component extends DCLogic {
     }
   }
 
-  setLoginName(e) { this.setState({ loginName: e.target.value }); }
-  setRegName(e) { this.setState({ regName: e.target.value }); }
-  setRegPass(e) { this.setState({ regPass: e.target.value }); }
-  setRegConfirm(e) { this.setState({ regConfirm: e.target.value }); }
-  async doLogin() {
-    const username = (this.state.loginName || '').trim();
-    if (!username) { this.setState({ authErr: 'أدخل اسم المستخدم' }); return; }
-    try {
-      const { user } = await this.api('/api/auth/login', { method: 'POST', body: JSON.stringify({ username, password: this.state.loginPass || '' }) });
-      this._saveSession(user);
-      this.setState({ user, authErr: '', loginPass: '', credits: (user.credits != null ? user.credits : this.state.credits) }, () => this.connectSocket());
-      this.go('home');
-    } catch (e) {
-      this.setState({ authErr: this._errText(e) });
-    }
-  }
-  async doRegister() {
-    const username = (this.state.regName || '').trim();
-    if (!username) { this.setState({ authErr: 'أدخل الاسم' }); return; }
-    const password = this.state.regPass || '';
-    if (password.length < 6) { this.setState({ authErr: 'كلمة المرور قصيرة جدًا (6 أحرف على الأقل)' }); return; }
-    if (password !== (this.state.regConfirm || '')) { this.setState({ authErr: 'كلمتا المرور غير متطابقتين' }); return; }
-    try {
-      const { user } = await this.api('/api/auth/register', { method: 'POST', body: JSON.stringify({ username, password }) });
-      this._saveSession(user);
-      this.setState({ user, authErr: '', regPass: '', regConfirm: '', credits: (user.credits != null ? user.credits : this.state.credits) }, () => this.connectSocket());
-      this.go('home');
-    } catch (e) {
-      this.setState({ authErr: this._errText(e) });
-    }
-  }
   _netNote(e) { return (e && e.status) ? (e.data && e.data.error) || 'خطأ' : 'وضع محلي — الخادم غير متصل'; }
   logout() {
     if (this._socket) { try { this._socket.disconnect(); } catch (x) {} this._socket = null; }
@@ -1183,7 +1091,6 @@ class Component extends DCLogic {
     this.setState({ user: null, connected: false, menuOpen: false, creditOpen: false, editMode: false, credits: 10 });
     this.go('home');
   }
-  setLoginPass(e) { this.setState({ loginPass: e.target.value }); }
   setJoinCode(e) { this.setState({ joinCode: e.target.value.replace(/\D/g, '').slice(0, 6) }); }
   setJoinName(e) { this.setState({ joinName: e.target.value }); }
   async doJoin() {
@@ -1211,7 +1118,7 @@ class Component extends DCLogic {
   // autoAdvance: تحويل تلقائي من منصة دورك — يقفز مباشرة لصفحة اختيار الفريق بعد الإنشاء
   // بدل شاشة "الغرفة جاهزة! شارك الكود" الوسيطة (اللي تحتاج ضغطة يدوية بالمسار العادي).
   createRoom(autoAdvance) {
-    if (!this.state.user) { this.go('login'); return; }
+    if (!this.state.user) { window.location.href = '/'; return; }
     this.setState({ loading: true, offline: false, statusMsg: '' });
     const s = this.connectSocket();
     if (s) {
@@ -1259,7 +1166,7 @@ class Component extends DCLogic {
   // ---- لوحة التحكم ----
   async loadAdmin() {
     try {
-      const [rounds, stats] = await Promise.all([this.api('/api/admin/rounds'), this.api('/api/admin/stats')]);
+      const [rounds, stats] = await Promise.all([this.api('/api/wslha-admin/rounds'), this.api('/api/wslha-admin/stats')]);
       const list = Array.isArray(rounds) ? rounds : ((rounds && rounds.rounds) || []);
       this.setState({ adminRounds: list, adminStats: stats || null, adminMsg: '' });
     } catch (e) {
@@ -1279,7 +1186,7 @@ class Component extends DCLogic {
     const question = (this.state.newQuestion || '').trim();
     const category = this.state.newCategory || CATEGORY_LIST[0];
     try {
-      await this.api('/api/admin/rounds', { method: 'POST', body: JSON.stringify({ hint, answers: answersRaw, question, category }) });
+      await this.api('/api/wslha-admin/rounds', { method: 'POST', body: JSON.stringify({ hint, answers: answersRaw, question, category }) });
       this.setState({ newHint: '', newAnswers: '', newQuestion: '' });
       this.loadAdmin();
     } catch (e) {
@@ -1290,7 +1197,7 @@ class Component extends DCLogic {
     }
   }
   async deleteRound(id) {
-    try { await this.api('/api/admin/rounds/' + id, { method: 'DELETE' }); this.loadAdmin(); }
+    try { await this.api('/api/wslha-admin/rounds/' + id, { method: 'DELETE' }); this.loadAdmin(); }
     catch (e) {
       const local = this._loadLocalRounds().filter(r => String(r.id) !== String(id));
       this._saveLocalRounds(local);
@@ -1300,7 +1207,7 @@ class Component extends DCLogic {
   startEditCategory(id) { this.setState({ editingCategoryId: id }); }
   async saveCategory(id, category) {
     this.setState({ editingCategoryId: null });
-    try { await this.api('/api/admin/rounds/' + id, { method: 'PATCH', body: JSON.stringify({ category }) }); this.loadAdmin(); }
+    try { await this.api('/api/wslha-admin/rounds/' + id, { method: 'PATCH', body: JSON.stringify({ category }) }); this.loadAdmin(); }
     catch (e) {
       const local = this._loadLocalRounds().map(r => String(r.id) === String(id) ? { ...r, category } : r);
       this._saveLocalRounds(local);
@@ -1313,7 +1220,7 @@ class Component extends DCLogic {
     const fd = new FormData();
     for (const f of fileList) fd.append('images', f);
     try {
-      const r = await fetch(base + '/api/admin/rounds/' + roundId + '/images', { method: 'POST', credentials: 'include', body: fd });
+      const r = await fetch(base + '/api/wslha-admin/rounds/' + roundId + '/images', { method: 'POST', credentials: 'include', body: fd });
       if (!r.ok) throw new Error('');
       this.loadAdmin();
     } catch (e) { this.setState({ adminMsg: this._netNote(e) }); }
@@ -1421,9 +1328,9 @@ class Component extends DCLogic {
     return {
       goHome: () => this.go('home'), goCreate: () => this.go('create'), goHow: () => this.go('how'), goAbout: () => this.go('about'),
       leaveLobby: () => this.leaveLobby(),
-      goLogin: () => this.go('login'), goJoin: () => this.go('join'), goGame: () => this.go('game'),
+      goLogin: () => { window.location.href = '/'; }, goJoin: () => this.go('join'), goGame: () => this.go('game'),
       isHome: page === 'home', isCreate: page === 'create', isHow: page === 'how', isAbout: page === 'about',
-      isLogin: page === 'login', isJoin: page === 'join', isGame: page === 'game', isResults: page === 'results', notGame: false,
+      isJoin: page === 'join', isGame: page === 'game', isResults: page === 'results', notGame: false,
       isLobby: page === 'lobby', isAdmin: page === 'admin', isTeams: page === 'teams',
       showCountdown: this.state.countdown > 0,
       countdownEl: React.createElement('div', {
@@ -1527,36 +1434,22 @@ class Component extends DCLogic {
       toggleMobileNav: () => this.setState(s => ({ mobileNavOpen: !s.mobileNavOpen, menuOpen: false, creditOpen: false })),
       iconMenu: I(ic.menu, 22),
       toggleMenu: () => this.toggleMenu(), toggleCredit: () => this.toggleCredit(), closeMenus: () => this.closeMenus(),
-      showNameEdit: this.state.editSection === 'name', showPassEdit: this.state.editSection === 'pass',
-      nameSign: this.state.editSection === 'name' ? '−' : '+', passSign: this.state.editSection === 'pass' ? '−' : '+',
-      toggleNameEdit: () => this.toggleNameEdit(), togglePassEdit: () => this.togglePassEdit(),
+      showNameEdit: this.state.editSection === 'name',
+      nameSign: this.state.editSection === 'name' ? '−' : '+',
+      toggleNameEdit: () => this.toggleNameEdit(),
       editMode: this.state.editMode, toggleEdit: () => this.toggleEdit(),
       editBtnBg: this.state.editMode ? 'rgba(129,140,248,.18)' : 'rgba(255,255,255,.05)',
       editBtnCol: this.state.editMode ? '#c4b5fd' : '#a9a7cc',
       profileName: this.state.profileName, setProfileName: (e) => this.setProfileName(e), saveName: () => this.saveName(),
-      curPass: this.state.curPass, setCurPass: (e) => this.setCurPass(e),
-      newPass: this.state.newPass, setNewPass: (e) => this.setNewPass(e), savePass: () => this.savePass(),
       hasProfileMsg: !!this.state.profileMsg, profileMsg: this.state.profileMsg,
       profileMsgColor: this.state.profileMsgType === 'ok' ? '#34d399' : '#f87171',
       profileMsgBg: this.state.profileMsgType === 'ok' ? 'rgba(52,211,153,.1)' : 'rgba(244,63,94,.1)',
       profileMsgBorder: this.state.profileMsgType === 'ok' ? 'rgba(52,211,153,.28)' : 'rgba(244,63,94,.28)',
-      hasAuthErr: !!this.state.authErr, authErr: this.state.authErr,
       iconTicket: I(ic.ticket, 17, '#fde68a'), iconTicketLg: I(ic.ticket, 26, '#fbbf24'), iconTicketSm: I(ic.ticket, 14, '#fbbf24'),
       iconTicketDark: I(ic.ticket, 15, '#3b2a06'),
       buyTickets: () => this.buyTickets(), buyNote: this.state.buyNote,
       noCredits: (this.state.credits != null ? this.state.credits : (((this.state.user && this.state.user.credits) != null) ? this.state.user.credits : 0)) <= 0,
       iconChevron: I(ic.chevron, 10), iconEdit: I(ic.edit, 12), iconLogout: I(ic.logout, 12),
-      loginTitle: this.state.loginTab === 'login' ? 'الدخول للحساب' : 'حساب جديد',
-      loginName: this.state.loginName, setLoginName: (e) => this.setLoginName(e), doLogin: () => this.doLogin(),
-      isLoginTab: this.state.loginTab === 'login', isRegTab: this.state.loginTab === 'register',
-      setToLogin: () => this.setState({ loginTab: 'login' }), setToRegister: () => this.setState({ loginTab: 'register' }),
-      loginTabBg: this.state.loginTab === 'login' ? 'rgba(255,255,255,.15)' : 'transparent',
-      loginTabCol: this.state.loginTab === 'login' ? '#fff' : '#a9a7cc',
-      regTabBg: this.state.loginTab === 'register' ? 'rgba(255,255,255,.15)' : 'transparent',
-      regTabCol: this.state.loginTab === 'register' ? '#fff' : '#a9a7cc',
-      regName: this.state.regName, setRegName: (e) => this.setRegName(e),
-      regPass: this.state.regPass, setRegPass: (e) => this.setRegPass(e), doRegister: () => this.doRegister(),
-      regConfirm: this.state.regConfirm, setRegConfirm: (e) => this.setRegConfirm(e),
       joinCode: this.state.joinCode, setJoinCode: (e) => this.setJoinCode(e), doJoin: () => this.doJoin(),
       joinName: this.state.joinName, setJoinName: (e) => this.setJoinName(e),
       playerOptions,
@@ -1574,7 +1467,6 @@ class Component extends DCLogic {
       zoomImageEl: React.createElement('img', { src: this.state.serverImage || cur.src, alt: 'صورة الجولة مكبّرة', style: { maxWidth: '92vw', maxHeight: '84vh', objectFit: 'contain', borderRadius: '16px', boxShadow: '0 30px 80px rgba(0,0,0,.6)' } }),
       zoomOpen: this.state.zoomOpen, openZoom: () => this.openZoom(), closeZoom: () => this.closeZoom(),
       iconZoom: I(ic.zoom, 18, '#fff'), iconClose: I(ic.close, 22, '#fff'),
-      loginPass: this.state.loginPass || '', setLoginPass: (e) => this.setLoginPass(e),
       currentImageHint: cur.hint,
       showHint: this.state.showHint, notShowHint: !this.state.showHint,
       toggleHint: () => this.setState(s => ({ showHint: !s.showHint })),
@@ -1597,10 +1489,10 @@ class Component extends DCLogic {
       resultsTeams: rt, winnerName: rt[0].name, winnerScore: arNum(this.state.resultsTickerScore + ' / ' + rtTotal), winnerTime: rt[0].timeStr,
       iconUsers: I(ic.users, 22), iconClock: I(ic.clock, 22), iconLock: I(ic.lock, 22), iconShare: I(ic.share, 22), iconTrophy: I(ic.trophy, 22),
       iconImg: I(ic.img, 18), iconPlus: I(ic.plus, 18), iconEnter: I(ic.enter, 18), iconEnterLg: I(ic.enter, 26, '#fff'),
-      iconKey: I(ic.key, 26, '#fff'), iconSend: I(ic.send, 17), iconClockLg: I(ic.clock, 24, '#34d399'), iconLockLg: I(ic.lock, 26), iconShareSm: I(ic.share, 15),
+      iconSend: I(ic.send, 17), iconClockLg: I(ic.clock, 24, '#34d399'), iconLockLg: I(ic.lock, 26), iconShareSm: I(ic.share, 15),
     };
   }
 }
 </script>
-<script src="/password-eye.js" defer></script><script src="/enter-submit.js" defer></script><script src="/share-result.js" defer></script><script src="/admin-users.js" defer></script><script src="/ripple.js" defer></script></body>
+<script src="/enter-submit.js" defer></script><script src="/share-result.js" defer></script><script src="/admin-users.js" defer></script><script src="/ripple.js" defer></script></body>
 </html>
