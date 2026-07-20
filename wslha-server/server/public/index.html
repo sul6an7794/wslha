@@ -491,13 +491,11 @@
   <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; margin-bottom:28px;">
     <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:16px; padding:18px; text-align:center;"><div style="font-size:28px; font-weight:900; color:#818cf8;">{{ adminStats.activeRooms }}</div><div style="font-size:13px; color:#a9a7cc; margin-top:4px;">غرف نشطة</div></div>
     <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:16px; padding:18px; text-align:center;"><div style="font-size:28px; font-weight:900; color:#ec4899;">{{ adminStats.totalPlayers }}</div><div style="font-size:13px; color:#a9a7cc; margin-top:4px;">لاعبون الآن</div></div>
-    <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:16px; padding:18px; text-align:center;"><div style="font-size:28px; font-weight:900; color:#38bdf8;">{{ adminStats.users }}</div><div style="font-size:13px; color:#a9a7cc; margin-top:4px;">مستخدمون</div></div>
     <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:16px; padding:18px; text-align:center;"><div style="font-size:28px; font-weight:900; color:#fbbf24;">{{ adminStats.rounds }}</div><div style="font-size:13px; color:#a9a7cc; margin-top:4px;">جولات</div></div>
   </div>
   </sc-if>
   <sc-if value="{{ !adminConnected }}" hint-placeholder-val="{{ true }}">
   <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; margin-bottom:28px;">
-    <div class="wsl-shimmer" style="border:1px solid rgba(255,255,255,.09); border-radius:16px; height:76px;"></div>
     <div class="wsl-shimmer" style="border:1px solid rgba(255,255,255,.09); border-radius:16px; height:76px;"></div>
     <div class="wsl-shimmer" style="border:1px solid rgba(255,255,255,.09); border-radius:16px; height:76px;"></div>
     <div class="wsl-shimmer" style="border:1px solid rgba(255,255,255,.09); border-radius:16px; height:76px;"></div>
@@ -1411,8 +1409,8 @@ class Component extends DCLogic {
       hasAdminRounds: (this.state.adminRounds || []).length > 0,
       adminStats: this.state.adminStats ? {
         activeRooms: arNum(this.state.adminStats.activeRooms), totalPlayers: arNum(this.state.adminStats.totalPlayers),
-        users: arNum(this.state.adminStats.users), rounds: arNum(this.state.adminStats.rounds),
-      } : { activeRooms: arNum(0), totalPlayers: arNum(0), users: arNum(0), rounds: arNum(0) },
+        rounds: arNum(this.state.adminStats.rounds),
+      } : { activeRooms: arNum(0), totalPlayers: arNum(0), rounds: arNum(0) },
       adminConnected: !!this.state.adminStats,
       newHint: this.state.newHint, setNewHint: (e) => this.setNewHint(e),
       newAnswers: this.state.newAnswers, setNewAnswers: (e) => this.setNewAnswers(e),
