@@ -3,6 +3,23 @@ function nameOf(state, playerId) {
   return p ? p.name : '';
 }
 
+// تحميل مؤجّل لأداة التقاط الصورة (html2canvas) — تُستخدم فقط بزر "مشاركة النتيجة"،
+// فلا داعي تُحمَّل مع كل زيارة للعبة.
+const H2C_URL = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+let h2cLoading = null;
+function loadHtml2Canvas() {
+  if (window.html2canvas) return Promise.resolve(window.html2canvas);
+  if (h2cLoading) return h2cLoading;
+  h2cLoading = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = H2C_URL;
+    s.onload = () => resolve(window.html2canvas);
+    s.onerror = () => reject(new Error('تعذّر تحميل أداة الصورة'));
+    document.head.appendChild(s);
+  });
+  return h2cLoading;
+}
+
 (function () {
   const { socket, emitAck, deviceId } = MafiaSocket;
   const root = document.getElementById('screenRoot');
@@ -56,7 +73,8 @@ function nameOf(state, playerId) {
     deathRevealName: null,
     gameOver: null,
     gameOverActionsReady: false,
-    shareResultStatus: '',
+    shareResultBusy: false,
+    shareResultDone: false,
     newGamePending: false,
     princessReveal: null,
     zoomedCard: null,
@@ -485,54 +503,38 @@ function nameOf(state, playerId) {
     }, 100);
   }
 
-  async function copyText(text) {
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(text);
-      return;
-    }
-    const input = document.createElement('textarea');
-    input.value = text;
-    input.setAttribute('readonly', '');
-    input.style.position = 'fixed';
-    input.style.opacity = '0';
-    document.body.appendChild(input);
-    input.select();
-    const copied = document.execCommand('copy');
-    input.remove();
-    if (!copied) throw new Error('copy failed');
-  }
-
-  function setShareResultStatus(message) {
-    state.shareResultStatus = message;
-    render();
-    setTimeout(() => {
-      if (state.shareResultStatus === message) {
-        state.shareResultStatus = '';
-        render();
-      }
-    }, 2200);
-  }
-
   const actions = {
+    // يلتقط بطاقة النتائج كصورة (html2canvas) ويشاركها (Web Share على الجوال) أو ينزّلها.
     async shareResult() {
-      const g = state.gameOver;
-      const text = g
-        ? ('انتهت مافيا: ' + (g.winner === 'mafia' ? 'فازت العصابة' : 'فاز المواطنون') + ' · حُسمت في الجولة ' + g.round)
-        : 'انتهت لعبة مافيا';
-      if (navigator.share) {
-        try {
-          await navigator.share({ title: 'نتيجة مافيا', text, url: location.origin });
-          setShareResultStatus('تمت مشاركة النتيجة');
-          return;
-        } catch (e) {
-          if (e && e.name === 'AbortError') return;
-        }
-      }
+      if (state.shareResultBusy) return;
+      const target = document.querySelector('.gameover-screen');
+      if (!target) return;
+      state.shareResultBusy = true;
+      render();
       try {
-        await copyText(text);
-        setShareResultStatus('تم نسخ النتيجة');
+        const h2c = await loadHtml2Canvas();
+        const canvas = await h2c(target, { backgroundColor: '#0A0F16', scale: Math.min(2, window.devicePixelRatio || 1), useCORS: true, logging: false });
+        const blob = await new Promise((res) => canvas.toBlob((b) => res(b), 'image/png'));
+        if (!blob) throw new Error('فشل إنشاء الصورة');
+        const file = new File([blob], 'mafia-result.png', { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: 'نتيجة مافيا', text: 'شوف نتيجتنا في مافيا! 🎭' }).catch((e) => {
+            if (!e || e.name !== 'AbortError') throw e;
+          });
+        } else {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = 'mafia-result.png';
+          document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 4000);
+        }
+        state.shareResultDone = true;
+        setTimeout(() => { state.shareResultDone = false; render(); }, 1800);
       } catch (e) {
-        setShareResultStatus('تعذرت المشاركة، حاول مرة ثانية');
+        alert((e && e.message) || 'تعذّرت المشاركة');
+      } finally {
+        state.shareResultBusy = false;
+        render();
       }
     },
     zoomCard(file, rect) {

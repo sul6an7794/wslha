@@ -65,7 +65,9 @@ function renderGameOverScreen(state, actions) {
   addGroup('خرجوا من اللعبة', g.roles.filter((role) => !role.alive), 'fallen');
   wrap.appendChild(summary);
 
-  const shareBtn = el('button', 'big-btn ghost', state.shareResultStatus || 'مشاركة النتيجة');
+  const shareLabel = state.shareResultBusy ? 'جارِ التجهيز…' : (state.shareResultDone ? 'تمت المشاركة ✓' : 'مشاركة النتيجة كصورة');
+  const shareBtn = el('button', 'big-btn ghost', shareLabel);
+  shareBtn.disabled = state.shareResultBusy;
   shareBtn.addEventListener('click', () => actions.shareResult());
   wrap.appendChild(shareBtn);
 

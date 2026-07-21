@@ -62,6 +62,8 @@ const App = {
     authError: '',
     pendingCreate: false,
     pendingJoinCode: '',
+    pendingGuestJoin: '',
+    guestNameError: '',
     game: 'mafia',
     joinCode: '',
     teamCount: 1,
@@ -139,6 +141,13 @@ const App = {
   async continueJoin(code) {
     try {
       const { game } = await this.api('/api/rooms/' + code);
+      // مافيا تحتاج اسم يميّز كل لاعب بالغرفة (يُستخدم بالاتهام/التصويت). الضيف اللي بلا
+      // حساب دورك ما نقدر نعبّي له اسمًا تلقائيًا، فنسأله قبل ما نكمّل للغرفة.
+      if (game === 'mafia' && !this.state.user) {
+        this.state.pendingGuestJoin = code;
+        this.go('joinName');
+        return;
+      }
       const name = this.state.user ? '&name=' + encodeURIComponent(this.state.user.username) : '';
       window.location.href = '/' + game + '/?room=' + code + (game === 'mafia' ? name : '');
     } catch (e) {
@@ -147,6 +156,15 @@ const App = {
       this.render();
       this.showToast('ما لقينا غرفة بهذا الرقم');
     }
+  },
+
+  confirmGuestName() {
+    const raw = (document.getElementById('guestNameInput').value || '').trim().slice(0, 20);
+    if (!raw) { this.state.guestNameError = 'اكتب اسمك عشان يميّزك ربعك بالغرفة'; this.render(); return; }
+    const code = this.state.pendingGuestJoin;
+    this.state.pendingGuestJoin = '';
+    this.state.guestNameError = '';
+    window.location.href = '/mafia/?room=' + code + '&name=' + encodeURIComponent(raw);
   },
 
   normalizeJoinCode(input) {
@@ -445,6 +463,26 @@ const App = {
       '</footer>';
   },
 
+  screenJoinName() {
+    const err = this.state.guestNameError
+      ? '<div class="error-banner">' + this.escape(this.state.guestNameError) + '</div>'
+      : '';
+    return '' +
+      '<main data-screen="joinName">' +
+        '<button class="back-btn" onclick="App.go(\'home\')">' + ICONS.back + ' رجوع</button>' +
+        '<div style="margin:26px 0 22px;text-align:center;">' +
+          '<h1 style="font-size:32px;margin:0 0 8px;">وش اسمك؟</h1>' +
+          '<p style="font-size:14px;color:var(--subtext);margin:0;">يظهر لربعك داخل الغرفة عشان يميزونك بالاتهام والتصويت</p>' +
+        '</div>' +
+        '<div class="form-col">' +
+          '<input id="guestNameInput" class="field" maxlength="20" placeholder="اكتب اسمك" onkeydown="if(event.key===\'Enter\')App.confirmGuestName()">' +
+          err +
+          '<button class="btn-primary" onclick="App.confirmGuestName()">دخول الغرفة</button>' +
+        '</div>' +
+        '<div class="footer-tag">دورك — تلعبها صح</div>' +
+      '</main>';
+  },
+
   screenAuth() {
     const s = this.state;
     const errorSlot = '<div id="authErrorSlot">' + (s.authError ? '<div class="error-banner">' + this.escape(s.authError) + '</div>' : '') + '</div>';
@@ -679,7 +717,7 @@ const App = {
 
   render() {
     this.renderHeader();
-    const map = { home: 'screenHome', auth: 'screenAuth', game: 'screenGame', create: 'screenCreate', tickets: 'screenTickets', profile: 'screenProfile', privacy: 'screenLegal', terms: 'screenLegal' };
+    const map = { home: 'screenHome', auth: 'screenAuth', joinName: 'screenJoinName', game: 'screenGame', create: 'screenCreate', tickets: 'screenTickets', profile: 'screenProfile', privacy: 'screenLegal', terms: 'screenLegal' };
     const fn = map[this.state.screen] || 'screenHome';
     document.getElementById('screenRoot').innerHTML = fn === 'screenLegal' ? this[fn](this.state.screen) : this[fn]();
   },
