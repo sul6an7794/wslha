@@ -983,6 +983,9 @@ class Component extends DCLogic {
     s.on('finished', (d) => { this.stopTimer(); this._clearResume(); this.setState({ page: 'results', gameScore: d.score, serverResults: (d.results && d.results.teams) || this.state.serverResults, serverTotal: (d.results && d.results.totalRounds) || this.state.serverTotal }); this.refreshMe(); });
     s.on('roomResults', (d) => this.setState({ serverResults: (d && d.teams) || [], serverTotal: (d && d.totalRounds) || this.state.serverTotal }));
     s.on('kicked', () => { this._clearResume(); this.setState({ myTeamIndex: null, role: null, statusMsg: 'تم إخراجك من الفريق من قبل القائد' }, () => this.go('teams')); });
+    // القيادة انتقلت لك (غادر القائد السابق أو انقطع اتصاله) — لازم نحدّث الدور محليًا
+    // عشان يظهر لك زر «ابدأ اللعبة»، فبثّ اللوبي العام يحدّث القائمة بس مو state.role.
+    s.on('captainPromoted', () => this.setState({ role: 'captain' }));
     return s;
   }
   get serverConnected() { return !!(this._socket && this._socket.connected); }

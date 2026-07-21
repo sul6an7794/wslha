@@ -346,6 +346,10 @@ function removePlayerFromTeam(io, room, team, socketId) {
     team.locked = 0;
   } else if (!team.players.some((p) => p.isCaptain)) {
     team.players[0].isCaptain = true;
+    // العميل يخزّن دوره (قائد/عضو) محليًا وقت الانضمام ولا يحدّثه تلقائيًا من بث اللوبي
+    // العام (الأسماء/الأدوار بالقائمة تتحدث، لكن زر «ابدأ اللعبة» يعتمد على state.role
+    // المحلي) — نبلّغ القائد الجديد مباشرة عشان يظهر له الزر فورًا.
+    io.to(team.players[0].socketId).emit('captainPromoted', {});
   }
 
   const anyPlayers = room.teams.some((t) => t.players.length > 0);
@@ -382,6 +386,7 @@ function leave(io, socket) {
     if (replacement) {
       player.isCaptain = false;
       replacement.isCaptain = true;
+      io.to(replacement.socketId).emit('captainPromoted', {});
     }
   }
   touch(room); // نبدأ عدّاد السماح من لحظة الانقطاع نفسها (مو من آخر نشاط أقدم)
