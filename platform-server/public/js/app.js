@@ -61,7 +61,6 @@ const App = {
     otpSending: false,
     authError: '',
     pendingCreate: false,
-    pendingJoinCode: '',
     pendingGuestJoin: '',
     guestNameError: '',
     game: 'mafia',
@@ -151,7 +150,6 @@ const App = {
       const name = this.state.user ? '&name=' + encodeURIComponent(this.state.user.username) : '';
       window.location.href = '/' + game + '/?room=' + code + (game === 'mafia' ? name : '');
     } catch (e) {
-      this.state.pendingJoinCode = '';
       this.setLoading(false);
       this.render();
       this.showToast('ما لقينا غرفة بهذا الرقم');
@@ -255,10 +253,7 @@ const App = {
     this.state.authError = '';
     this.showToast('حيّاك يا ' + user.username);
     const pendingCreate = this.state.pendingCreate;
-    const pendingJoinCode = this.state.pendingJoinCode;
     this.state.pendingCreate = false;
-    this.state.pendingJoinCode = '';
-    if (pendingJoinCode) return this.continueJoin(pendingJoinCode);
     if (pendingCreate === 'mafia') return this.createRoom();
     this.go(pendingCreate ? 'create' : 'home');
   },
