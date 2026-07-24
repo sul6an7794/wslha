@@ -512,6 +512,9 @@ function loadHtml2Canvas() {
       state.shareResultBusy = true;
       render();
       try {
+        // نستنى تحميل الخطوط المخصّصة فعليًا قبل التقاط الصورة — بدونه html2canvas قد يلتقط
+        // بالخط الاحتياطي للمتصفح (لو ما خلص تحميل الخط بعد)، فتطلع الصورة بخط مختلف عن الموقع.
+        if (document.fonts && document.fonts.ready) await document.fonts.ready;
         const h2c = await loadHtml2Canvas();
         const canvas = await h2c(target, { backgroundColor: '#0A0F16', scale: Math.min(2, window.devicePixelRatio || 1), useCORS: true, logging: false });
         const blob = await new Promise((res) => canvas.toBlob((b) => res(b), 'image/png'));

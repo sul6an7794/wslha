@@ -55,12 +55,12 @@
 <link rel="preload" href="/fonts/thmanyahsans-Bold.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/thmanyahserifdisplay-Black.woff2" as="font" type="font/woff2" crossorigin>
 <style>
-  @font-face{font-family:'Thmanyah Sans';src:url('/fonts/thmanyahsans-Regular.woff2') format('woff2');font-weight:400;font-display:optional;}
-  @font-face{font-family:'Thmanyah Sans';src:url('/fonts/thmanyahsans-Medium.woff2') format('woff2');font-weight:500;font-display:optional;}
-  @font-face{font-family:'Thmanyah Sans';src:url('/fonts/thmanyahsans-Bold.woff2') format('woff2');font-weight:700;font-display:optional;}
-  @font-face{font-family:'Thmanyah Sans';src:url('/fonts/thmanyahsans-Black.woff2') format('woff2');font-weight:800 900;font-display:optional;}
-  @font-face{font-family:'Thmanyah Serif Display';src:url('/fonts/thmanyahserifdisplay-Bold.woff2') format('woff2');font-weight:700;font-display:optional;}
-  @font-face{font-family:'Thmanyah Serif Display';src:url('/fonts/thmanyahserifdisplay-Black.woff2') format('woff2');font-weight:800 900;font-display:optional;}
+  @font-face{font-family:'Thmanyah Sans';src:url('/fonts/thmanyahsans-Regular.woff2') format('woff2');font-weight:400;font-display:swap;}
+  @font-face{font-family:'Thmanyah Sans';src:url('/fonts/thmanyahsans-Medium.woff2') format('woff2');font-weight:500;font-display:swap;}
+  @font-face{font-family:'Thmanyah Sans';src:url('/fonts/thmanyahsans-Bold.woff2') format('woff2');font-weight:700;font-display:swap;}
+  @font-face{font-family:'Thmanyah Sans';src:url('/fonts/thmanyahsans-Black.woff2') format('woff2');font-weight:800 900;font-display:swap;}
+  @font-face{font-family:'Thmanyah Serif Display';src:url('/fonts/thmanyahserifdisplay-Bold.woff2') format('woff2');font-weight:700;font-display:swap;}
+  @font-face{font-family:'Thmanyah Serif Display';src:url('/fonts/thmanyahserifdisplay-Black.woff2') format('woff2');font-weight:800 900;font-display:swap;}
   .wslha-kashida { font-family:'Thmanyah Serif Display','Thmanyah Sans',serif; font-feature-settings:'ss01' 1,'salt' 1; }
   .wslha-wordmark { display:inline-block; font-family:'Thmanyah Serif Display','Thmanyah Sans',serif; font-feature-settings:'ss01' 1,'salt' 1; font-weight:900; line-height:1.12; background:linear-gradient(135deg,#818cf8,#ec4899); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
   .wslha-wordmark--header { font-size:24px; }
@@ -690,7 +690,7 @@
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;100%&quot;,&quot;height&quot;:820},&quot;apiUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;الخادم&quot;}}">
 function arNum(v) { return String(v).replace(/[0-9]/g, d => '٠١٢٣٤٥٦٧٨٩'[d]); }
 
-// تحميل مؤجّل لأداة التقاط الصورة (html2canvas) — تُستخدم فقط بزر "مشاركة النتيجة كصورة"،
+// تحميل مؤجّل لأداة التقاط الصورة (html2canvas) — تُستخدم فقط بزر "مشاركة النتيجة"،
 // فلا داعي تُحمَّل مع كل زيارة للصفحة.
 const H2C_URL = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
 let h2cLoading = null;
@@ -916,7 +916,11 @@ class Component extends DCLogic {
     const target = document.querySelector('[data-screen-label="Results"]');
     if (!target) return;
     this.setState({ resultsShareBusy: true });
-    loadHtml2Canvas()
+    // نستنى تحميل الخطوط المخصّصة فعليًا قبل التقاط الصورة — بدونه html2canvas قد يلتقط
+    // بالخط الاحتياطي للمتصفح (لو ما خلص تحميل الخط بعد)، فتطلع الصورة بخط مختلف عن الموقع.
+    const fontsReady = (typeof document !== 'undefined' && document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+    fontsReady
+      .then(() => loadHtml2Canvas())
       .then((h2c) => h2c(target, { backgroundColor: '#0a081e', scale: Math.min(2, window.devicePixelRatio || 1), useCORS: true, logging: false }))
       .then((canvas) => new Promise((res) => canvas.toBlob((b) => res(b), 'image/png')))
       .then((blob) => {
@@ -1603,7 +1607,7 @@ class Component extends DCLogic {
       shareUrl: this.shareUrl(), copyShare: () => this.copyShare(),
       shareBtnLabel: this.state.shareCopied ? 'تم النسخ' : 'نسخ الرابط',
       shareResults: () => this.shareResults(),
-      resultsShareLabel: this.state.resultsShareBusy ? 'جارِ التجهيز…' : (this.state.resultsShareDone ? 'تمت المشاركة ✓' : 'مشاركة النتيجة كصورة'),
+      resultsShareLabel: this.state.resultsShareBusy ? 'جارِ التجهيز…' : (this.state.resultsShareDone ? 'تمت المشاركة ✓' : 'مشاركة النتيجة'),
       resultsShareBusy: this.state.resultsShareBusy,
       elapsedDisplay, roundNumber: arNum(ri + 1), roundTotal: arNum(total), hintShown: this.state.hintShown, hintText: this.state.hintText || '',
       playerLabel: uname + ' · ' + arNum(activeCode),
