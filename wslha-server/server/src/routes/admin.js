@@ -9,6 +9,8 @@ const { rateLimit } = require('../rateLimit');
 
 const adminLimit = rateLimit(120, 60 * 1000, 'admin'); // 120 طلب بالدقيقة لكل IP — كافٍ للاستخدام العادي، يمنع إساءة الاستخدام
 const uploadLimit = rateLimit(30, 5 * 60 * 1000, 'admin-upload'); // رفع الصور أثقل، حد أضيق له
+// كل جولة تحتاج بالضبط صورة واحدة لكل لاعب بالفريق (TEAM_SIZE = 3 بـ rooms.js) — لا فائدة من صور زايدة.
+const MAX_IMAGES_PER_ROUND = 3;
 
 // تحقق هوية/إشراف عبر الجسر المشترك بدل استيراد auth.js مباشرة — auth.js صار ملك
 // platform-server، ووصّلها ما يعتمد عليه إلا عبر global.__DOURK_PLATFORM__ (نفس نمط مافيا).
@@ -110,6 +112,10 @@ router.post('/rounds/:id/images', uploadLimit, (req, res) => {
       const roundId = req.params.id;
       const round = db.getRound(roundId);
       if (!round) return res.status(404).json({ error: 'الجولة غير موجودة' });
+      // كل جولة تحتاج بالضبط صورة واحدة لكل لاعب بالفريق (٣ لاعبين) — لا فائدة من صور زايدة.
+      if ((round.images || []).length + (req.files || []).length > MAX_IMAGES_PER_ROUND) {
+        return res.status(400).json({ error: 'الحد الأقصى ' + MAX_IMAGES_PER_ROUND + ' صور لكل جولة (صورة لكل لاعب)' });
+      }
       // رابط كامل (مع عنوان السيرفر) ليعمل حتى لو فُتحت الواجهة المستقلة من ملف محلي.
       const origin = req.protocol + '://' + req.get('host');
       for (const f of req.files || []) {

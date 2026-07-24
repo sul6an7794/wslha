@@ -492,7 +492,9 @@
             <button onClick="{{ p.remove }}" title="حذف الصورة" style="position:absolute; top:-7px; right:-7px; width:22px; height:22px; border-radius:50%; background:#f43f5e; border:2px solid #150f2e; color:#fff; font-size:13px; font-weight:900; line-height:1; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0;" style-hover="filter:brightness(1.15);">×</button>
           </div>
         </sc-for>
+        <sc-if value="{{ newImagesNotFull }}" hint-placeholder-val="{{ true }}">
         <label style="display:flex; align-items:center; gap:7px; font-size:13px; font-weight:700; color:#c4b5fd; background:rgba(129,140,248,.12); border:1px dashed rgba(129,140,248,.4); padding:10px 16px; border-radius:12px; cursor:pointer;" style-hover="background:rgba(129,140,248,.2);">{{ iconUpload }} رفع صور<input type="file" accept="image/*" multiple onChange="{{ onAddNewImages }}" style="display:none;"></label>
+        </sc-if>
       </div>
     </div>
     <button onClick="{{ createRound }}" style="font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:15px; color:#fff; background:linear-gradient(135deg,#818cf8,#ec4899); border:none; padding:12px 26px; border-radius:12px; cursor:pointer;" style-hover="filter:brightness(1.08);">+ إنشاء الجولة</button>
@@ -533,7 +535,9 @@
                 <button onClick="{{ im.remove }}" title="حذف الصورة" style="position:absolute; top:-7px; right:-7px; width:22px; height:22px; border-radius:50%; background:#f43f5e; border:2px solid #150f2e; color:#fff; font-size:13px; font-weight:900; line-height:1; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0;" style-hover="filter:brightness(1.15);">×</button>
               </div>
             </sc-for>
+            <sc-if value="{{ r.canAddMoreImages }}" hint-placeholder-val="{{ true }}">
             <label style="display:flex; align-items:center; gap:7px; font-size:13px; font-weight:700; color:#c4b5fd; background:rgba(129,140,248,.12); border:1px dashed rgba(129,140,248,.4); padding:10px 16px; border-radius:12px; cursor:pointer;" style-hover="background:rgba(129,140,248,.2);">{{ iconUpload }} رفع صور<input type="file" accept="image/*" multiple onChange="{{ r.onUpload }}" style="display:none;"></label>
+            </sc-if>
           </div>
         </div>
         <div style="display:flex; gap:12px;">
@@ -558,7 +562,9 @@
           <sc-for list="{{ r.thumbs }}" as="t" hint-placeholder-count="0">
             <div style="text-align:center;">{{ t.el }}<div style="font-size:11px; color:#a9a7cc; margin-top:4px;">{{ t.label }}</div></div>
           </sc-for>
+          <sc-if value="{{ r.canAddMoreImages }}" hint-placeholder-val="{{ true }}">
           <label style="display:flex; align-items:center; gap:7px; font-size:13px; font-weight:700; color:#c4b5fd; background:rgba(129,140,248,.12); border:1px dashed rgba(129,140,248,.4); padding:10px 16px; border-radius:12px; cursor:pointer;" style-hover="background:rgba(129,140,248,.2);">{{ iconUpload }} رفع صور<input type="file" accept="image/*" multiple onChange="{{ r.onUpload }}" style="display:none;"></label>
+          </sc-if>
         </div>
         </sc-if>
 
@@ -703,6 +709,8 @@ function loadHtml2Canvas() {
 
 // تصنيف الجولة: وسم تنظيمي يحدده المشرف فقط من لوحة التحكم — لا يظهر ولا يؤثر على اللاعب أبدًا.
 const CATEGORY_LIST = ['الاختلاف', 'تحدي الصور', 'معادلات', 'أعلام', 'خرائط', 'أمثله', 'ترتيب', 'الشعار الصح'];
+// كل جولة تحتاج بالضبط صورة واحدة لكل لاعب بالفريق (TEAM_SIZE = 3 بالسيرفر) — لا فائدة من صور زايدة.
+const MAX_IMAGES_PER_ROUND = 3;
 
 class Component extends DCLogic {
   state = {
@@ -1233,8 +1241,10 @@ class Component extends DCLogic {
   // الإنشاء، بس تظهر للمشرف فورًا مع زر × لحذف أي صورة أضافها بالغلط قبل الإرسال.
   addNewImages(fileList) {
     if (!fileList || !fileList.length) return;
-    const added = Array.from(fileList).map((file) => ({ file, previewUrl: URL.createObjectURL(file) }));
-    this.setState({ newImages: [...(this.state.newImages || []), ...added] });
+    const current = this.state.newImages || [];
+    const room = Math.max(0, MAX_IMAGES_PER_ROUND - current.length);
+    const added = Array.from(fileList).slice(0, room).map((file) => ({ file, previewUrl: URL.createObjectURL(file) }));
+    this.setState({ newImages: [...current, ...added] });
   }
   removeNewImage(index) {
     const list = this.state.newImages || [];
@@ -1317,9 +1327,13 @@ class Component extends DCLogic {
   }
   async uploadImages(roundId, fileList) {
     if (!fileList || !fileList.length) return;
+    const round = (this.state.adminRounds || []).find((r) => String(r.id) === String(roundId));
+    const room = Math.max(0, MAX_IMAGES_PER_ROUND - ((round && round.images) || []).length);
+    const files = Array.from(fileList).slice(0, room);
+    if (!files.length) return;
     const base = this.apiBase();
     const fd = new FormData();
-    for (const f of fileList) fd.append('images', f);
+    for (const f of files) fd.append('images', f);
     try {
       const r = await fetch(base + '/api/wslha-admin/rounds/' + roundId + '/images', { method: 'POST', credentials: 'include', body: fd });
       if (!r.ok) throw new Error('');
@@ -1505,6 +1519,7 @@ class Component extends DCLogic {
         cancelEdit: () => this.cancelEditRound(),
         save: () => this.saveEditRound(r.id),
         imageCount: arNum((r.images || []).length),
+        canAddMoreImages: (r.images || []).length < MAX_IMAGES_PER_ROUND,
         thumbs: (r.images || []).slice(0, 6).map((im, k) => ({
           label: 'لاعب ' + arNum(k + 1),
           el: React.createElement('img', { src: im.url, style: { width: '52px', height: '52px', objectFit: 'cover', borderRadius: '8px', display: 'block' } }),
@@ -1525,6 +1540,7 @@ class Component extends DCLogic {
         el: React.createElement('img', { src: im.previewUrl, style: { width: '64px', height: '64px', objectFit: 'cover', borderRadius: '10px', display: 'block' } }),
         remove: () => this.removeNewImage(i),
       })),
+      newImagesNotFull: (this.state.newImages || []).length < MAX_IMAGES_PER_ROUND,
       onAddNewImages: (e) => { this.addNewImages(e.target.files); e.target.value = ''; },
       hasAdminRounds: (this.state.adminRounds || []).length > 0,
       adminStats: this.state.adminStats ? {
