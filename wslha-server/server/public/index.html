@@ -502,22 +502,52 @@
   <div style="display:flex; flex-direction:column; gap:14px;">
     <sc-for list="{{ adminRounds }}" as="r" hint-placeholder-count="2">
       <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:18px; padding:20px;">
+
+        <sc-if value="{{ r.editing }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
+          <div style="flex:1; min-width:200px;">
+            <label style="display:block; font-size:13px; font-weight:700; margin-bottom:6px; color:#d8d6ee;">التلميح</label>
+            <input value="{{ editHint }}" onInput="{{ setEditHint }}" style="width:100%; font-family:'Thmanyah Sans',sans-serif; font-size:15px; color:#f1f0ff; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.14); border-radius:12px; padding:12px 14px; outline:none; margin-bottom:14px;" style-focus="border-color:rgba(129,140,248,.7);">
+            <label style="display:block; font-size:13px; font-weight:700; margin-bottom:6px; color:#d8d6ee;">الإجابات المقبولة (افصل بفاصلة)</label>
+            <input value="{{ editAnswers }}" onInput="{{ setEditAnswers }}" style="width:100%; font-family:'Thmanyah Sans',sans-serif; font-size:15px; color:#f1f0ff; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.14); border-radius:12px; padding:12px 14px; outline:none;" style-focus="border-color:rgba(129,140,248,.7);">
+          </div>
+        </div>
+        <div style="margin-bottom:14px;">
+          <label style="display:block; font-size:13px; font-weight:700; margin-bottom:6px; color:#d8d6ee;">سؤال الجولة <span style="color:#6b6894; font-weight:500;">(اختياري)</span></label>
+          <input value="{{ editQuestion }}" onInput="{{ setEditQuestion }}" style="width:100%; font-family:'Thmanyah Sans',sans-serif; font-size:15px; color:#f1f0ff; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.14); border-radius:12px; padding:12px 14px; outline:none;" style-focus="border-color:rgba(129,140,248,.7);">
+        </div>
+        <div style="margin-bottom:14px;">
+          <label style="display:block; font-size:13px; font-weight:700; margin-bottom:6px; color:#d8d6ee;">تصنيف الجولة</label>
+          <select value="{{ editCategory }}" onchange="{{ setEditCategory }}" style="width:100%; font-family:'Thmanyah Sans',sans-serif; font-size:15px; font-weight:700; color:#f1f0ff; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.14); border-radius:12px; padding:12px 14px; outline:none; cursor:pointer; color-scheme:dark;" style-focus="border-color:rgba(129,140,248,.7);">
+            <sc-for list="{{ categoryList }}" as="cat" hint-placeholder-count="8">
+              <option value="{{ cat }}" style="background:#15122e; color:#f1f0ff;">{{ cat }}</option>
+            </sc-for>
+          </select>
+        </div>
+        <div style="margin-bottom:18px;">
+          <label style="display:block; font-size:13px; font-weight:700; margin-bottom:6px; color:#d8d6ee;">صور الجولة <span style="color:#6b6894; font-weight:500;">(بترتيب اللاعبين — الأولى للاعب ١، والثانية للاعب ٢، وهكذا)</span></label>
+          <div style="display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap;">
+            <sc-for list="{{ r.editImages }}" as="im" hint-placeholder-count="0">
+              <div style="position:relative;">
+                {{ im.el }}
+                <button onClick="{{ im.remove }}" title="حذف الصورة" style="position:absolute; top:-7px; right:-7px; width:22px; height:22px; border-radius:50%; background:#f43f5e; border:2px solid #150f2e; color:#fff; font-size:13px; font-weight:900; line-height:1; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0;" style-hover="filter:brightness(1.15);">×</button>
+              </div>
+            </sc-for>
+            <label style="display:flex; align-items:center; gap:7px; font-size:13px; font-weight:700; color:#c4b5fd; background:rgba(129,140,248,.12); border:1px dashed rgba(129,140,248,.4); padding:10px 16px; border-radius:12px; cursor:pointer;" style-hover="background:rgba(129,140,248,.2);">{{ iconUpload }} رفع صور<input type="file" accept="image/*" multiple onChange="{{ r.onUpload }}" style="display:none;"></label>
+          </div>
+        </div>
+        <div style="display:flex; gap:12px;">
+          <button onClick="{{ r.save }}" style="flex:1; font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:15px; color:#fff; background:linear-gradient(135deg,#818cf8,#ec4899); border:none; padding:12px 26px; border-radius:12px; cursor:pointer;" style-hover="filter:brightness(1.08);">حفظ التعديلات</button>
+          <button onClick="{{ r.cancelEdit }}" style="font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:15px; color:#f1f0ff; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14); padding:12px 22px; border-radius:12px; cursor:pointer;" style-hover="background:rgba(255,255,255,.1);">إلغاء</button>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ !r.editing }}" hint-placeholder-val="{{ true }}">
         <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
           <div style="flex:1;"><div style="font-size:16px; font-weight:800;">{{ r.hint }}</div><div style="font-size:13px; color:#a9a7cc; margin-top:3px;">الإجابات: {{ r.answersText }}</div></div>
-          <sc-if value="{{ !r.editingCategory }}" hint-placeholder-val="{{ true }}">
-            <div style="display:flex; align-items:center; gap:6px;">
-              <div style="font-size:12px; font-weight:800; color:#fff; background:linear-gradient(135deg,#818cf8,#ec4899); padding:5px 12px; border-radius:20px; white-space:nowrap;">{{ r.category }}</div>
-              <button onClick="{{ r.startEditCategory }}" title="تعديل التصنيف" style="display:flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:8px; background:rgba(129,140,248,.12); border:1px solid rgba(129,140,248,.3); color:#c4b5fd; cursor:pointer; font-size:12px;" style-hover="background:rgba(129,140,248,.2);">✎</button>
-            </div>
-          </sc-if>
-          <sc-if value="{{ r.editingCategory }}" hint-placeholder-val="{{ false }}">
-            <select value="{{ r.categoryValue }}" onchange="{{ r.onCategoryChange }}" style="font-family:'Thmanyah Sans',sans-serif; font-size:12px; font-weight:700; color:#f1f0ff; background:rgba(255,255,255,.06); border:1px solid rgba(129,140,248,.4); border-radius:14px; padding:6px 10px; outline:none; cursor:pointer; color-scheme:dark;" style-focus="border-color:rgba(129,140,248,.7);">
-              <sc-for list="{{ categoryList }}" as="cat" hint-placeholder-count="8">
-                <option value="{{ cat }}" style="background:#15122e; color:#f1f0ff;">{{ cat }}</option>
-              </sc-for>
-            </select>
-          </sc-if>
+          <div style="font-size:12px; font-weight:800; color:#fff; background:linear-gradient(135deg,#818cf8,#ec4899); padding:5px 12px; border-radius:20px; white-space:nowrap;">{{ r.category }}</div>
           <div style="font-size:13px; font-weight:700; color:#818cf8; background:rgba(129,140,248,.12); padding:5px 12px; border-radius:20px;">{{ r.imageCount }} صور</div>
+          <button onClick="{{ r.startEdit }}" title="تعديل الجولة" style="display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:10px; background:rgba(129,140,248,.12); border:1px solid rgba(129,140,248,.3); color:#c4b5fd; cursor:pointer;" style-hover="background:rgba(129,140,248,.2);">✎</button>
           <button onClick="{{ r.del }}" style="display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:10px; background:rgba(244,63,94,.12); border:1px solid rgba(244,63,94,.3); color:#f43f5e; cursor:pointer;" style-hover="background:rgba(244,63,94,.2);">{{ iconTrash }}</button>
         </div>
         <sc-if value="{{ r.hasQuestion }}" hint-placeholder-val="{{ false }}">
@@ -530,6 +560,8 @@
           </sc-for>
           <label style="display:flex; align-items:center; gap:7px; font-size:13px; font-weight:700; color:#c4b5fd; background:rgba(129,140,248,.12); border:1px dashed rgba(129,140,248,.4); padding:10px 16px; border-radius:12px; cursor:pointer;" style-hover="background:rgba(129,140,248,.2);">{{ iconUpload }} رفع صور<input type="file" accept="image/*" multiple onChange="{{ r.onUpload }}" style="display:none;"></label>
         </div>
+        </sc-if>
+
       </div>
     </sc-for>
   </div>
@@ -692,7 +724,8 @@ class Component extends DCLogic {
     // الاتصال بالخادم
     connected: false, serverImage: null, lobbyPlayers: [], statusMsg: '', deviceId: null,
     // لوحة التحكم
-    adminRounds: [], adminStats: null, newHint: '', newAnswers: '', newQuestion: '', newCategory: CATEGORY_LIST[0], newImages: [], adminMsg: '', editingCategoryId: null,
+    adminRounds: [], adminStats: null, newHint: '', newAnswers: '', newQuestion: '', newCategory: CATEGORY_LIST[0], newImages: [], adminMsg: '',
+    editingRoundId: null, editHint: '', editAnswers: '', editQuestion: '', editCategory: CATEGORY_LIST[0],
     serverTeams: [], myTeamIndex: null, namingTeam: null, teamNameInput: '', startRequested: false, shareCopied: false, resultsShareBusy: false, resultsShareDone: false, zoomOpen: false, countdown: 0,
     // الحساب: القوائم والتذاكر وتعديل الملف
     menuOpen: false, creditOpen: false, editMode: false, editSection: null,
@@ -1245,15 +1278,42 @@ class Component extends DCLogic {
       this.setState({ adminRounds: local, adminMsg: '' });
     }
   }
-  startEditCategory(id) { this.setState({ editingCategoryId: id }); }
-  async saveCategory(id, category) {
-    this.setState({ editingCategoryId: null });
-    try { await this.api('/api/wslha-admin/rounds/' + id, { method: 'PATCH', body: JSON.stringify({ category }) }); this.loadAdmin(); }
-    catch (e) {
-      const local = this._loadLocalRounds().map(r => String(r.id) === String(id) ? { ...r, category } : r);
-      this._saveLocalRounds(local);
-      this.setState({ adminRounds: local, adminMsg: '' });
+  startEditRound(round) {
+    this.setState({
+      editingRoundId: round.id,
+      editHint: round.hint || '',
+      editAnswers: (round.answers || []).join('، '),
+      editQuestion: round.question || '',
+      editCategory: round.category || CATEGORY_LIST[0],
+    });
+  }
+  cancelEditRound() { this.setState({ editingRoundId: null }); }
+  setEditHint(e) { this.setState({ editHint: e.target.value }); }
+  setEditAnswers(e) { this.setState({ editAnswers: e.target.value }); }
+  setEditQuestion(e) { this.setState({ editQuestion: e.target.value }); }
+  setEditCategory(e) { this.setState({ editCategory: e.target.value }); }
+  async saveEditRound(id) {
+    const answersRaw = (this.state.editAnswers || '').trim();
+    if (!answersRaw) { this.setState({ adminMsg: 'أدخل الإجابات المقبولة أولاً' }); return; }
+    try {
+      await this.api('/api/wslha-admin/rounds/' + id, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          hint: (this.state.editHint || '').trim(),
+          answers: answersRaw,
+          question: (this.state.editQuestion || '').trim(),
+          category: this.state.editCategory || CATEGORY_LIST[0],
+        }),
+      });
+      this.setState({ editingRoundId: null });
+      this.loadAdmin();
+    } catch (e) {
+      this.setState({ adminMsg: this._netNote(e) });
     }
+  }
+  async deleteExistingImage(roundId, imageId) {
+    try { await this.api('/api/wslha-admin/rounds/' + roundId + '/images/' + imageId, { method: 'DELETE' }); this.loadAdmin(); }
+    catch (e) { this.setState({ adminMsg: this._netNote(e) }); }
   }
   async uploadImages(roundId, fileList) {
     if (!fileList || !fileList.length) return;
@@ -1440,18 +1500,26 @@ class Component extends DCLogic {
         answersText: (r.answers || []).join('، '),
         question: r.question || '', hasQuestion: !!r.question,
         category: r.category || '—',
-        editingCategory: this.state.editingCategoryId === r.id,
-        categoryValue: r.category || CATEGORY_LIST[0],
-        startEditCategory: () => this.startEditCategory(r.id),
-        onCategoryChange: (e) => this.saveCategory(r.id, e.target.value),
+        editing: this.state.editingRoundId === r.id,
+        startEdit: () => this.startEditRound(r),
+        cancelEdit: () => this.cancelEditRound(),
+        save: () => this.saveEditRound(r.id),
         imageCount: arNum((r.images || []).length),
         thumbs: (r.images || []).slice(0, 6).map((im, k) => ({
           label: 'لاعب ' + arNum(k + 1),
           el: React.createElement('img', { src: im.url, style: { width: '52px', height: '52px', objectFit: 'cover', borderRadius: '8px', display: 'block' } }),
         })),
+        editImages: (r.images || []).map((im) => ({
+          el: React.createElement('img', { src: im.url, style: { width: '64px', height: '64px', objectFit: 'cover', borderRadius: '10px', display: 'block' } }),
+          remove: () => this.deleteExistingImage(r.id, im.id),
+        })),
         del: () => this.deleteRound(r.id),
-        onUpload: (e) => this.uploadImages(r.id, e.target.files),
+        onUpload: (e) => { this.uploadImages(r.id, e.target.files); e.target.value = ''; },
       })),
+      editHint: this.state.editHint, setEditHint: (e) => this.setEditHint(e),
+      editAnswers: this.state.editAnswers, setEditAnswers: (e) => this.setEditAnswers(e),
+      editQuestion: this.state.editQuestion, setEditQuestion: (e) => this.setEditQuestion(e),
+      editCategory: this.state.editCategory, setEditCategory: (e) => this.setEditCategory(e),
       newQuestion: this.state.newQuestion, setNewQuestion: (e) => this.setNewQuestion(e),
       newImagePreviews: (this.state.newImages || []).map((im, i) => ({
         el: React.createElement('img', { src: im.previewUrl, style: { width: '64px', height: '64px', objectFit: 'cover', borderRadius: '10px', display: 'block' } }),

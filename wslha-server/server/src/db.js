@@ -59,6 +59,7 @@ const fileBackend = {
   async delRound() { this._save(); },
   async putImageMeta() { this._save(); },
   async putImagesMeta() { this._save(); },
+  async delImageMeta() { this._save(); },
   async delImagesMetaForRound() { this._save(); },
   async saveImage(key, buffer) {
     const full = safeUploadPath(key);
@@ -70,6 +71,11 @@ const fileBackend = {
     const full = safeUploadPath(key);
     if (!full || !fs.existsSync(full)) return null;
     return { data: fs.readFileSync(full), contentType: guessType(key) };
+  },
+  async delImageFile(key) {
+    const full = safeUploadPath(key);
+    if (!full) return;
+    try { fs.unlinkSync(full); } catch (e) {}
   },
   async delImagesFiles(prefix) {
     try { fs.rmSync(path.join(UPLOADS_DIR, prefix), { recursive: true, force: true }); } catch (e) {}
@@ -131,6 +137,7 @@ function makeMongoBackend(uri) {
     async delRound(id) { await Round.deleteOne({ _id: id }); },
     async putImageMeta(i) { await ImageMeta.updateOne({ _id: i.id }, { $set: i }, { upsert: true }); },
     async putImagesMeta(list) { await Promise.all(list.map((i) => ImageMeta.updateOne({ _id: i.id }, { $set: i }, { upsert: true }))); },
+    async delImageMeta(id) { await ImageMeta.deleteOne({ _id: id }); },
     async delImagesMetaForRound(rid) { await ImageMeta.deleteMany({ round_id: rid }); },
     async saveImage(key, buffer, contentType) {
       await ImageBlob.updateOne({ _id: key }, { $set: { contentType: contentType || guessType(key), data: buffer } }, { upsert: true });
@@ -141,6 +148,7 @@ function makeMongoBackend(uri) {
       const data = Buffer.isBuffer(d.data) ? d.data : Buffer.from(d.data.buffer || d.data);
       return { data, contentType: d.contentType };
     },
+    async delImageFile(key) { await ImageBlob.deleteOne({ _id: key }); },
     async delImagesFiles(prefix) {
       const esc = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       await ImageBlob.deleteMany({ _id: new RegExp('^' + esc) });
@@ -261,10 +269,14 @@ async function insertRound({ hint, answers, hintPlayerIndex, category, question 
   await backend.putRound(round);
   return { ...round, images: [] };
 }
-async function setRoundCategory(id, category) {
+// تحديث جزئي: كل حقل يُمرَّر فقط لو المشرف عدّله فعليًا (undefined = خلّه كما هو).
+async function updateRound(id, fields) {
   const round = state.rounds.find((r) => r.id === Number(id));
   if (!round) return null;
-  round.category = String(category || '').trim();
+  if (fields.category !== undefined) round.category = String(fields.category || '').trim();
+  if (fields.hint !== undefined) round.hint = String(fields.hint || '').trim();
+  if (fields.question !== undefined) round.question = String(fields.question || '').trim();
+  if (fields.answers !== undefined) round.answers = fields.answers;
   await backend.putRound(round);
   return { ...round, images: getRoundImages(round.id) };
 }
@@ -276,6 +288,20 @@ async function deleteRound(id) {
   await backend.delImagesMetaForRound(rid);
   if (backend.delImagesFiles) backend.delImagesFiles('rounds/' + rid + '/').catch(() => {});
 }
+// حذف صورة واحدة من جولة (بدل حذف الجولة كاملة) — تُعاد ترقيم مواقع الباقيات حتى لا تصير فجوة برقم اللاعب.
+async function deleteRoundImage(roundId, imageId) {
+  const rid = Number(roundId);
+  const iid = Number(imageId);
+  const img = state.round_images.find((i) => i.id === iid && i.round_id === rid);
+  if (!img) return false;
+  state.round_images = state.round_images.filter((i) => i.id !== iid);
+  await backend.delImageMeta(iid);
+  if (backend.delImageFile) await backend.delImageFile('rounds/' + rid + '/' + img.filename).catch(() => {});
+  const rest = state.round_images.filter((i) => i.round_id === rid).sort((a, b) => (a.position || a.id) - (b.position || b.id));
+  rest.forEach((im, idx) => { im.position = idx + 1; });
+  await backend.putImagesMeta(rest);
+  return true;
+}
 
 module.exports = {
   init,
@@ -286,8 +312,9 @@ module.exports = {
   getRound,
   getRoundsCount,
   insertRound,
-  setRoundCategory,
+  updateRound,
   deleteRound,
   insertRoundImage,
   setImagePosition,
+  deleteRoundImage,
 };

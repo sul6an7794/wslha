@@ -61,12 +61,21 @@ router.post('/rounds', async (req, res) => {
   res.json(toApiRound(round));
 });
 
-// تعديل تصنيف جولة موجودة (بدون التأثير على بقية بياناتها).
+// تعديل جولة موجودة — تعديل جزئي: أي حقل يُترك بلا إرسال يبقى كما هو.
 router.patch('/rounds/:id', async (req, res) => {
   const round = db.getRound(req.params.id);
   if (!round) return res.status(404).json({ error: 'الجولة غير موجودة' });
-  const { category } = req.body || {};
-  const updated = await db.setRoundCategory(req.params.id, category);
+  const { category, hint, question, answers } = req.body || {};
+  const fields = {};
+  if (category !== undefined) fields.category = category;
+  if (hint !== undefined) fields.hint = hint;
+  if (question !== undefined) fields.question = question;
+  if (answers !== undefined) {
+    const list = String(answers || '').split('،').join(',').split(',').map((s) => s.trim()).filter(Boolean);
+    if (!list.length) return res.status(400).json({ error: 'الإجابة مطلوبة (إجابة واحدة على الأقل)' });
+    fields.answers = list;
+  }
+  const updated = await db.updateRound(req.params.id, fields);
   res.json(toApiRound(updated));
 });
 
@@ -134,6 +143,14 @@ router.patch('/rounds/:id/images/:imageId', async (req, res) => {
   if (!round) return res.status(404).json({ error: 'الجولة غير موجودة' });
   const { playerIndex } = req.body || {};
   await db.setImagePosition(req.params.id, req.params.imageId, playerIndex);
+  res.json(toApiRound(db.getRound(req.params.id)));
+});
+
+// حذف صورة واحدة من الجولة (بدل حذف الجولة كاملة لتصحيح صورة واحدة بالغلط).
+router.delete('/rounds/:id/images/:imageId', async (req, res) => {
+  const round = db.getRound(req.params.id);
+  if (!round) return res.status(404).json({ error: 'الجولة غير موجودة' });
+  await db.deleteRoundImage(req.params.id, req.params.imageId);
   res.json(toApiRound(db.getRound(req.params.id)));
 });
 
