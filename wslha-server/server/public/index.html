@@ -220,6 +220,16 @@
 <!-- CREATE -->
 <sc-if value="{{ isCreate }}" hint-placeholder-val="{{ false }}">
 <div style="position:relative; z-index:1; max-width:640px; margin:0 auto; padding:56px 24px 72px; animation:tqIn .4s ease;" data-screen-label="Create">
+  <sc-if value="{{ autoCreating }}" hint-placeholder-val="{{ false }}">
+  <div style="background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); border-radius:28px; padding:52px 40px; backdrop-filter:blur(16px); box-shadow:0 30px 80px rgba(0,0,0,.4); text-align:center;">
+    <div style="margin-bottom:22px;"><span class="wslha-wordmark wslha-wordmark--create">وصّلـها</span></div>
+    <div style="display:flex; justify-content:center; gap:10px; margin-bottom:18px; direction:ltr;">
+      <span style="width:14px; height:14px; border-radius:50%; background:#ff2d2d; box-shadow:0 0 12px rgba(255,45,45,.7); animation:pageLoaderPulse 1s ease-in-out infinite;"></span>
+      <span style="width:14px; height:14px; border-radius:50%; background:#818cf8; box-shadow:0 0 12px rgba(129,140,248,.7); animation:pageLoaderPulse 1s ease-in-out infinite .15s;"></span>
+    </div>
+    <p style="font-size:14px; color:#a9a7cc; margin:0;">جارِ إنشاء غرفتك…</p>
+  </div>
+  </sc-if>
   <sc-if value="{{ notCreated }}" hint-placeholder-val="{{ true }}">
   <div style="background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); border-radius:28px; padding:40px; backdrop-filter:blur(16px); box-shadow:0 30px 80px rgba(0,0,0,.4);">
     <div style="text-align:center;"><span class="wslha-wordmark wslha-wordmark--create">وصّلـها</span></div>
@@ -473,6 +483,18 @@
         </sc-for>
       </select>
     </div>
+    <div style="margin-bottom:18px;">
+      <label style="display:block; font-size:13px; font-weight:700; margin-bottom:6px; color:#d8d6ee;">صور الجولة <span style="color:#6b6894; font-weight:500;">(بترتيب اللاعبين — الأولى للاعب ١، والثانية للاعب ٢، وهكذا)</span></label>
+      <div style="display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap;">
+        <sc-for list="{{ newImagePreviews }}" as="p" hint-placeholder-count="0">
+          <div style="position:relative;">
+            {{ p.el }}
+            <button onClick="{{ p.remove }}" title="حذف الصورة" style="position:absolute; top:-7px; right:-7px; width:22px; height:22px; border-radius:50%; background:#f43f5e; border:2px solid #150f2e; color:#fff; font-size:13px; font-weight:900; line-height:1; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0;" style-hover="filter:brightness(1.15);">×</button>
+          </div>
+        </sc-for>
+        <label style="display:flex; align-items:center; gap:7px; font-size:13px; font-weight:700; color:#c4b5fd; background:rgba(129,140,248,.12); border:1px dashed rgba(129,140,248,.4); padding:10px 16px; border-radius:12px; cursor:pointer;" style-hover="background:rgba(129,140,248,.2);">{{ iconUpload }} رفع صور<input type="file" accept="image/*" multiple onChange="{{ onAddNewImages }}" style="display:none;"></label>
+      </div>
+    </div>
     <button onClick="{{ createRound }}" style="font-family:'Thmanyah Sans',sans-serif; font-weight:700; font-size:15px; color:#fff; background:linear-gradient(135deg,#818cf8,#ec4899); border:none; padding:12px 26px; border-radius:12px; cursor:pointer;" style-hover="filter:brightness(1.08);">+ إنشاء الجولة</button>
   </div>
 
@@ -659,6 +681,10 @@ class Component extends DCLogic {
     // الفعلية (إنشاء/انضمام/استرجاع) خلال componentDidMount.
     page: 'create',
     maxPlayers: 3, created: false, roomCode: '',
+    // يمنع ومضة شاشة "عدد اللاعبين" لمن جاي بتحويل تلقائي من المنصة (?autoCreate=1) — نعرف
+    // هذا من رابط الصفحة نفسه فورًا (بلا انتظار تأكيد الجلسة من الخادم عبر componentDidMount)
+    // فنخفي نموذج الاختيار من أول رسم ونعرض تحميل بسيط لحين ما يخلص createRoom الحقيقي.
+    autoCreating: (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('autoCreate') === '1'),
     user: null,
     loading: false, offline: false, joinCode: '', joinName: '',
     elapsed: 0, roundIndex: 0, answer: '', locked: 0, showHint: false, gameScore: 0, hintText: '', hintShown: false, wrongCount: 0, resultsTickerScore: 0,
@@ -666,7 +692,7 @@ class Component extends DCLogic {
     // الاتصال بالخادم
     connected: false, serverImage: null, lobbyPlayers: [], statusMsg: '', deviceId: null,
     // لوحة التحكم
-    adminRounds: [], adminStats: null, newHint: '', newAnswers: '', newQuestion: '', newCategory: CATEGORY_LIST[0], adminMsg: '', editingCategoryId: null,
+    adminRounds: [], adminStats: null, newHint: '', newAnswers: '', newQuestion: '', newCategory: CATEGORY_LIST[0], newImages: [], adminMsg: '', editingCategoryId: null,
     serverTeams: [], myTeamIndex: null, namingTeam: null, teamNameInput: '', startRequested: false, shareCopied: false, resultsShareBusy: false, resultsShareDone: false, zoomOpen: false, countdown: 0,
     // الحساب: القوائم والتذاكر وتعديل الملف
     menuOpen: false, creditOpen: false, editMode: false, editSection: null,
@@ -761,7 +787,9 @@ class Component extends DCLogic {
   // يتحقق من جلسة الكوكي عند السيرفر مباشرة (بدل الاعتماد على توكن مخزَّن بالجافاسكربت).
   refreshMe() {
     this.api('/api/auth/me').then(({ user }) => {
-      if (!user) return;
+      // لا جلسة صالحة: نلغي autoCreating حتى لا تعلق شاشة التحميل بلا داعٍ — الرابط بالأصل
+      // ما يفترض يوصل بلا جلسة (منصة دورك تتحقق قبل التحويل)، بس هذا احتياط لو انتهت الجلسة.
+      if (!user) { if (this.state.autoCreating) this.setState({ autoCreating: false }); return; }
       this._saveSession(user);
       this.setState({ user, credits: (user.credits != null ? user.credits : this.state.credits) }, () => {
         if (!this._socket) this.connectSocket();
@@ -777,6 +805,7 @@ class Component extends DCLogic {
     }).catch(() => {
       // ما فيه جلسة صالحة عند السيرفر — امسح أي بيانات محلية قديمة متبقية.
       if (this.state.user) { this._clearSession(); this.setState({ user: null }); }
+      if (this.state.autoCreating) this.setState({ autoCreating: false });
     });
   }
   // تحويل من منصة دورك: ?autoCreate=1&maxPlayers=N ينشئ الغرفة تلقائيًا (بدل انتظار ضغطة يدوية) بعد تأكيد تسجيل الدخول.
@@ -1122,8 +1151,9 @@ class Component extends DCLogic {
           }
           this._applyWithViewTransition(upd, () => { if (autoAdvance) this.goTeams(); });
         } else if (res && res.error) {
-          // رصيد غير كافٍ أو خطأ من الخادم — اعرضه بلطف بدل الوضع المحلي
-          this.setState({ loading: false, statusMsg: res.error });
+          // رصيد غير كافٍ أو خطأ من الخادم — اعرضه بلطف بدل الوضع المحلي. نلغي autoCreating
+          // هنا عشان يشوف المستخدم نموذج الاختيار + رسالة الخطأ بدل ما يعلق على شاشة تحميل.
+          this.setState({ loading: false, statusMsg: res.error, autoCreating: false });
         } else {
           this._createLocal();
         }
@@ -1166,6 +1196,23 @@ class Component extends DCLogic {
   setNewHint(e) { this.setState({ newHint: e.target.value }); }
   setNewAnswers(e) { this.setState({ newAnswers: e.target.value }); }
   setNewCategory(e) { this.setState({ newCategory: e.target.value }); }
+  // يضيف الصور المختارة إلى معاينة محلية (قبل إنشاء الجولة) — تُرفع فعليًا فقط بعد نجاح
+  // الإنشاء، بس تظهر للمشرف فورًا مع زر × لحذف أي صورة أضافها بالغلط قبل الإرسال.
+  addNewImages(fileList) {
+    if (!fileList || !fileList.length) return;
+    const added = Array.from(fileList).map((file) => ({ file, previewUrl: URL.createObjectURL(file) }));
+    this.setState({ newImages: [...(this.state.newImages || []), ...added] });
+  }
+  removeNewImage(index) {
+    const list = this.state.newImages || [];
+    const target = list[index];
+    if (target) { try { URL.revokeObjectURL(target.previewUrl); } catch (e) {} }
+    this.setState({ newImages: list.filter((_, i) => i !== index) });
+  }
+  _clearNewImages() {
+    (this.state.newImages || []).forEach((im) => { try { URL.revokeObjectURL(im.previewUrl); } catch (e) {} });
+    this.setState({ newImages: [] });
+  }
   async createRound() {
     const hint = (this.state.newHint || '').trim();
     const answersRaw = (this.state.newAnswers || '').trim();
@@ -1173,14 +1220,20 @@ class Component extends DCLogic {
     const answers = answersRaw.split(/[،,]/).map(a => a.trim()).filter(Boolean);
     const question = (this.state.newQuestion || '').trim();
     const category = this.state.newCategory || CATEGORY_LIST[0];
+    const stagedImages = this.state.newImages || [];
     try {
-      await this.api('/api/wslha-admin/rounds', { method: 'POST', body: JSON.stringify({ hint, answers: answersRaw, question, category }) });
+      const round = await this.api('/api/wslha-admin/rounds', { method: 'POST', body: JSON.stringify({ hint, answers: answersRaw, question, category }) });
+      this._clearNewImages();
       this.setState({ newHint: '', newAnswers: '', newQuestion: '' });
-      this.loadAdmin();
+      // نرفع الصور المعاينة (لو فيه) دفعة وحدة بعد ما تتأكد بيانات الجولة نفسها — نفس مسار
+      // الرفع الحالي per-round، بس نستدعيه مباشرة بدل ما ننتظر ضغطة "رفع صور" لاحقة.
+      if (stagedImages.length) await this.uploadImages(round.id, stagedImages.map((im) => im.file));
+      else this.loadAdmin();
     } catch (e) {
       const local = this._loadLocalRounds();
       local.unshift({ id: 'L' + Date.now(), hint: hint || (question || answers[0] || 'جولة'), answers, question, category, images: [] });
       this._saveLocalRounds(local);
+      this._clearNewImages();
       this.setState({ newHint: '', newAnswers: '', newQuestion: '', adminRounds: local, adminMsg: '' });
     }
   }
@@ -1400,6 +1453,11 @@ class Component extends DCLogic {
         onUpload: (e) => this.uploadImages(r.id, e.target.files),
       })),
       newQuestion: this.state.newQuestion, setNewQuestion: (e) => this.setNewQuestion(e),
+      newImagePreviews: (this.state.newImages || []).map((im, i) => ({
+        el: React.createElement('img', { src: im.previewUrl, style: { width: '64px', height: '64px', objectFit: 'cover', borderRadius: '10px', display: 'block' } }),
+        remove: () => this.removeNewImage(i),
+      })),
+      onAddNewImages: (e) => { this.addNewImages(e.target.files); e.target.value = ''; },
       hasAdminRounds: (this.state.adminRounds || []).length > 0,
       adminStats: this.state.adminStats ? {
         activeRooms: arNum(this.state.adminStats.activeRooms), totalPlayers: arNum(this.state.adminStats.totalPlayers),
@@ -1448,7 +1506,8 @@ class Component extends DCLogic {
       createRoom: () => this.createRoom(),
       creating: this.state.loading, createLabel: this.state.loading ? 'جاري الإنشاء…' : 'إنشاء الغرفة',
       offline: this.state.offline,
-      created: this.state.created, notCreated: !this.state.created,
+      created: this.state.created, notCreated: !this.state.created && !this.state.autoCreating,
+      autoCreating: this.state.autoCreating && !this.state.created,
       roomCode: arNum(this.state.roomCode), qrCells: this.qrCells(), qrSrc: 'https://api.qrserver.com/v1/create-qr-code/?size=190x190&margin=6&bgcolor=15122e&color=f1f0ff&data=' + encodeURIComponent(this.shareUrl()),
       shareUrl: this.shareUrl(), copyShare: () => this.copyShare(),
       shareBtnLabel: this.state.shareCopied ? 'تم النسخ' : 'نسخ الرابط',

@@ -59,6 +59,7 @@ const App = {
     otpLocalDraft: '',
     otpPhone: '',
     otpSending: false,
+    otpVerifying: false,
     authError: '',
     pendingCreate: false,
     pendingGuestJoin: '',
@@ -171,6 +172,12 @@ const App = {
 
   backToPhoneStep() { this.state.otpStage = 'phone'; this.state.authError = ''; this.render(); },
 
+  // يرسل الرمز تلقائيًا فور اكتمال ٤ أرقام (بدل انتظار ضغطة يدوية على الزر).
+  onOtpInput(input) {
+    input.value = input.value.replace(/\D/g, '').slice(0, 4);
+    if (input.value.length === 4 && !this.state.otpVerifying) this.verifyOtpCode();
+  },
+
   onCountryCodeChange(select) {
     this.state.otpCountryCode = select.value;
     // إعادة رسم لازمة عشان نظهر/نخفي حقل رمز الدولة اليدوي — نحافظ على الرقم المكتوب
@@ -209,14 +216,19 @@ const App = {
   },
 
   async verifyOtpCode() {
+    if (this.state.otpVerifying) return;
     const otp = document.getElementById('authOtp').value.trim();
     if (!otp) return this.setAuthError('أدخل رمز التحقق');
+    this.state.otpVerifying = true;
+    this.setAuthError('');
+    this.render();
     try {
       const { user, isNew } = await this.api('/api/auth/otp/verify', {
         method: 'POST',
         body: JSON.stringify({ phone: this.state.otpPhone, otp }),
       });
       this.state.user = user;
+      this.state.otpVerifying = false;
       // حساب جديد فعلاً؟ نعرض خطوة اختيار اسم مرة وحدة بس — لو حساب قديم يكمل دخوله على طول
       // بدون ما يشوف أي حقل اسم (ما له داعي، وممكن يلخبطه إذا كتب شي مختلف عن اسمه المسجّل).
       if (isNew) {
@@ -226,7 +238,9 @@ const App = {
       }
       this.finishLogin();
     } catch (e) {
+      this.state.otpVerifying = false;
       this.setAuthError(e.message);
+      this.render();
     }
   },
 
@@ -500,9 +514,9 @@ const App = {
       '</div>';
     const codeStep = '' +
       '<div class="form-col">' +
-        '<input id="authOtp" inputmode="numeric" autocomplete="one-time-code" class="field" placeholder="رمز التحقق">' +
+        '<input id="authOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="4" ' + (s.otpVerifying ? 'disabled' : '') + ' class="field" placeholder="رمز التحقق" oninput="App.onOtpInput(this)">' +
         errorSlot +
-        '<button class="btn-primary" onclick="App.verifyOtpCode()">تأكيد الدخول</button>' +
+        '<button class="btn-primary" ' + (s.otpVerifying ? 'disabled' : '') + ' onclick="App.verifyOtpCode()">' + (s.otpVerifying ? 'جارِ التحقق...' : 'تأكيد الدخول') + '</button>' +
         '<button class="btn-link" onclick="App.backToPhoneStep()">تغيير الرقم</button>' +
       '</div>';
     const nameStep = '' +
