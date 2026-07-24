@@ -118,8 +118,15 @@ footer .socials a:hover{transform:translateY(-2px);border-color:var(--gold);colo
 .tabs button.active{background:var(--btn-bg);color:var(--btn-text);}
 .form-col{display:flex;flex-direction:column;gap:12px;}
 .phone-row{display:flex;gap:8px;}
-.phone-row .phone-code{flex:0 0 108px;padding-inline:10px;}
+.phone-row .phone-code{flex:0 0 108px;padding-inline:10px;padding-left:26px;appearance:none;-webkit-appearance:none;-moz-appearance:none;color-scheme:dark;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23A9A8BD' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:left 10px center;}
 .phone-row .phone-local{flex:1;min-width:0;}
+
+/* رمز التحقق: مربع مستقل لكل رقم بدل حقل نصي واحد */
+.otp-boxes{display:flex;gap:10px;justify-content:center;margin-bottom:4px;}
+.otp-box{width:54px;height:62px;font-size:24px;font-weight:900;text-align:center;color:var(--text);background:var(--surface2);border:1px solid var(--border2);border-radius:14px;}
+.otp-box:disabled{opacity:.5;}
 .hint-banner{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--gold);font-weight:700;background:rgba(224,184,106,.08);border:1px dashed rgba(224,184,106,.35);border-radius:12px;padding:11px 14px;}
 .error-banner{font-size:13px;font-weight:700;color:var(--error-text);background:rgba(255,45,45,.08);border:1px solid rgba(255,45,45,.3);border-radius:12px;padding:10px 14px;}
 .btn-primary{width:100%;font-weight:900;font-size:16px;color:var(--btn-text);background:var(--btn-bg);border:none;border-radius:14px;padding:15px;margin-top:6px;}

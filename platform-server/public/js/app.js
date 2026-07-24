@@ -172,10 +172,29 @@ const App = {
 
   backToPhoneStep() { this.state.otpStage = 'phone'; this.state.authError = ''; this.render(); },
 
-  // يرسل الرمز تلقائيًا فور اكتمال ٤ أرقام (بدل انتظار ضغطة يدوية على الزر).
-  onOtpInput(input) {
-    input.value = input.value.replace(/\D/g, '').slice(0, 4);
-    if (input.value.length === 4 && !this.state.otpVerifying) this.verifyOtpCode();
+  // كل رقم بمربع مستقل: نكتب رقم وحد فيه وننتقل تلقائيًا للي بعده، ولو الجوال حط الرمز
+  // كامل بمربع وحد (تعبئة تلقائية من رسالة SMS) نوزّعه على بقية المربعات بدل ما يتوقف عليه.
+  onOtpBoxInput(input, index) {
+    const boxes = Array.from(document.querySelectorAll('.otp-box'));
+    const raw = input.value.replace(/\D/g, '');
+    if (raw.length > 1) {
+      raw.slice(0, boxes.length - index).split('').forEach((d, i) => { if (boxes[index + i]) boxes[index + i].value = d; });
+      const nextEmpty = boxes.findIndex((b, i) => i > index && !b.value);
+      (nextEmpty === -1 ? boxes[boxes.length - 1] : boxes[nextEmpty]).focus();
+    } else {
+      input.value = raw;
+      if (raw && boxes[index + 1]) boxes[index + 1].focus();
+    }
+    const code = boxes.map((b) => b.value).join('');
+    if (code.length === boxes.length && !this.state.otpVerifying) this.verifyOtpCode(code);
+  },
+
+  // Backspace بمربع فاضي يرجع للمربع اللي قبله ويمسحه، بدل ما يعلق المؤشر بمكانه.
+  onOtpBoxKeydown(e, index) {
+    if (e.key !== 'Backspace' || e.target.value || index === 0) return;
+    const boxes = Array.from(document.querySelectorAll('.otp-box'));
+    boxes[index - 1].value = '';
+    boxes[index - 1].focus();
   },
 
   onCountryCodeChange(select) {
@@ -208,6 +227,8 @@ const App = {
       this.state.otpStage = 'code';
       this.state.otpSending = false;
       this.render();
+      const firstBox = document.querySelector('.otp-box');
+      if (firstBox) firstBox.focus();
     } catch (e) {
       this.state.otpSending = false;
       this.setAuthError(e.message);
@@ -215,10 +236,10 @@ const App = {
     }
   },
 
-  async verifyOtpCode() {
+  async verifyOtpCode(otpArg) {
     if (this.state.otpVerifying) return;
-    const otp = document.getElementById('authOtp').value.trim();
-    if (!otp) return this.setAuthError('أدخل رمز التحقق');
+    const otp = otpArg || Array.from(document.querySelectorAll('.otp-box')).map((b) => b.value).join('').trim();
+    if (!otp || otp.length < 4) return this.setAuthError('أدخل رمز التحقق كامل');
     this.state.otpVerifying = true;
     this.setAuthError('');
     this.render();
@@ -512,9 +533,12 @@ const App = {
         errorSlot +
         '<button class="btn-primary" ' + (s.otpSending ? 'disabled' : '') + ' onclick="App.requestOtp()">' + (s.otpSending ? 'جارِ الإرسال...' : 'إرسال رمز التحقق') + '</button>' +
       '</div>';
+    const otpBoxes = Array.from({ length: 4 }, (_, i) =>
+      '<input class="otp-box" inputmode="numeric" maxlength="1" autocomplete="one-time-code" ' + (s.otpVerifying ? 'disabled' : '') + ' oninput="App.onOtpBoxInput(this,' + i + ')" onkeydown="App.onOtpBoxKeydown(event,' + i + ')">'
+    ).join('');
     const codeStep = '' +
       '<div class="form-col">' +
-        '<input id="authOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="4" ' + (s.otpVerifying ? 'disabled' : '') + ' class="field" placeholder="رمز التحقق" oninput="App.onOtpInput(this)">' +
+        '<div class="otp-boxes" dir="ltr">' + otpBoxes + '</div>' +
         errorSlot +
         '<button class="btn-primary" ' + (s.otpVerifying ? 'disabled' : '') + ' onclick="App.verifyOtpCode()">' + (s.otpVerifying ? 'جارِ التحقق...' : 'تأكيد الدخول') + '</button>' +
         '<button class="btn-link" onclick="App.backToPhoneStep()">تغيير الرقم</button>' +
