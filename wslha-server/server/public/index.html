@@ -227,7 +227,7 @@
       <span style="width:14px; height:14px; border-radius:50%; background:#ff2d2d; box-shadow:0 0 12px rgba(255,45,45,.7); animation:pageLoaderPulse 1s ease-in-out infinite;"></span>
       <span style="width:14px; height:14px; border-radius:50%; background:#818cf8; box-shadow:0 0 12px rgba(129,140,248,.7); animation:pageLoaderPulse 1s ease-in-out infinite .15s;"></span>
     </div>
-    <p style="font-size:14px; color:#a9a7cc; margin:0;">جارِ إنشاء غرفتك…</p>
+    <p style="font-size:14px; color:#a9a7cc; margin:0;">{{ transitionLabel }}</p>
   </div>
   </sc-if>
   <sc-if value="{{ notCreated }}" hint-placeholder-val="{{ true }}">
@@ -725,6 +725,9 @@ class Component extends DCLogic {
     // هذا من رابط الصفحة نفسه فورًا (بلا انتظار تأكيد الجلسة من الخادم عبر componentDidMount)
     // فنخفي نموذج الاختيار من أول رسم ونعرض تحميل بسيط لحين ما يخلص createRoom الحقيقي.
     autoCreating: (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('autoCreate') === '1'),
+    // نفس الفكرة بالضبط لرابط لوحة التحكم (?admin=1 من زر "لوحة التحكم" بمنصة دورك) — نمنع
+    // ومضة شاشة "عدد اللاعبين" لحين ما يتأكد إن المستخدم مشرف فعلًا وننقله لصفحة الإدارة.
+    pendingAdmin: (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('admin') === '1'),
     user: null,
     loading: false, offline: false, joinCode: '', joinName: '',
     elapsed: 0, roundIndex: 0, answer: '', locked: 0, showHint: false, gameScore: 0, hintText: '', hintShown: false, wrongCount: 0, resultsTickerScore: 0,
@@ -828,9 +831,9 @@ class Component extends DCLogic {
   // يتحقق من جلسة الكوكي عند السيرفر مباشرة (بدل الاعتماد على توكن مخزَّن بالجافاسكربت).
   refreshMe() {
     this.api('/api/auth/me').then(({ user }) => {
-      // لا جلسة صالحة: نلغي autoCreating حتى لا تعلق شاشة التحميل بلا داعٍ — الرابط بالأصل
-      // ما يفترض يوصل بلا جلسة (منصة دورك تتحقق قبل التحويل)، بس هذا احتياط لو انتهت الجلسة.
-      if (!user) { if (this.state.autoCreating) this.setState({ autoCreating: false }); return; }
+      // لا جلسة صالحة: نلغي autoCreating/pendingAdmin حتى لا تعلق شاشة التحميل بلا داعٍ — الرابط
+      // بالأصل ما يفترض يوصل بلا جلسة (منصة دورك تتحقق قبل التحويل)، بس هذا احتياط لو انتهت الجلسة.
+      if (!user) { if (this.state.autoCreating || this.state.pendingAdmin) this.setState({ autoCreating: false, pendingAdmin: false }); return; }
       this._saveSession(user);
       this.setState({ user, credits: (user.credits != null ? user.credits : this.state.credits) }, () => {
         if (!this._socket) this.connectSocket();
@@ -841,12 +844,15 @@ class Component extends DCLogic {
             return;
           }
         } catch (e) {}
+        // وصلنا هنا وpendingAdmin كان مفعّلًا (رابط admin=1 بس المستخدم مو مشرف) — نلغيه حتى لا
+        // تعلق شاشة التحميل، ونكمل المسار العادي.
+        if (this.state.pendingAdmin) this.setState({ pendingAdmin: false });
         this._maybeAutoCreate();
       });
     }).catch(() => {
       // ما فيه جلسة صالحة عند السيرفر — امسح أي بيانات محلية قديمة متبقية.
       if (this.state.user) { this._clearSession(); this.setState({ user: null }); }
-      if (this.state.autoCreating) this.setState({ autoCreating: false });
+      if (this.state.autoCreating || this.state.pendingAdmin) this.setState({ autoCreating: false, pendingAdmin: false });
     });
   }
   // تحويل من منصة دورك: ?autoCreate=1&maxPlayers=N ينشئ الغرفة تلقائيًا (بدل انتظار ضغطة يدوية) بعد تأكيد تسجيل الدخول.
@@ -1590,8 +1596,9 @@ class Component extends DCLogic {
       createRoom: () => this.createRoom(),
       creating: this.state.loading, createLabel: this.state.loading ? 'جاري الإنشاء…' : 'إنشاء الغرفة',
       offline: this.state.offline,
-      created: this.state.created, notCreated: !this.state.created && !this.state.autoCreating,
-      autoCreating: this.state.autoCreating && !this.state.created,
+      created: this.state.created, notCreated: !this.state.created && !this.state.autoCreating && !this.state.pendingAdmin,
+      autoCreating: (this.state.autoCreating || this.state.pendingAdmin) && !this.state.created,
+      transitionLabel: this.state.pendingAdmin ? 'جارِ فتح لوحة التحكم…' : 'جارِ إنشاء غرفتك…',
       roomCode: arNum(this.state.roomCode), qrCells: this.qrCells(), qrSrc: 'https://api.qrserver.com/v1/create-qr-code/?size=190x190&margin=6&bgcolor=15122e&color=f1f0ff&data=' + encodeURIComponent(this.shareUrl()),
       shareUrl: this.shareUrl(), copyShare: () => this.copyShare(),
       shareBtnLabel: this.state.shareCopied ? 'تم النسخ' : 'نسخ الرابط',
